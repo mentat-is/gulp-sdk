@@ -24,13 +24,14 @@ class AuthAPI:
         self.client = client
         self._last_user_id: str | None = None
 
-    async def login(self, user_id: str, password: str) -> TokenSession:
+    async def login(self, user_id: str, password: str, force: bool = True) -> TokenSession:
         """
         Authenticate with username/password, get session token.
 
         Args:
             user_id: Login user id
             password: Login password
+            force: If True, forces login even if already logged in (invalidates existing session token).
 
         Returns:
             TokenSession with authentication token
@@ -42,6 +43,7 @@ class AuthAPI:
             "POST",
             "/login",
             json={"user_id": user_id, "password": password},
+            params={"force": force},
         )
         token_data = response_data.get("data", {})
         token_session = TokenSession.model_validate(
