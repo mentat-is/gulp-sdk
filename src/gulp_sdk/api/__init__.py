@@ -3,7 +3,6 @@
 __all__ = [
     "AuthAPI",
     "OperationsAPI",
-    "DocumentsAPI",
     "IngestAPI",
     "QueriesAPI",
     "UsersAPI",

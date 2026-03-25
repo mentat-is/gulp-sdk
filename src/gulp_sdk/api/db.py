@@ -25,6 +25,7 @@ Quick example::
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
+from gulp_sdk.api.request_utils import wait_for_request_stats
 
 if TYPE_CHECKING:
     from gulp_sdk.client import GulpClient
@@ -50,6 +51,8 @@ class DbAPI:
         flt: dict[str, Any] | None = None,
         script: str | None = None,
         req_id: str | None = None,
+        wait: bool = False,
+        timeout: int = 120,
     ) -> dict[str, Any]:
         """
         Rebase (shift) document timestamps in-place using ``update_by_query``.
@@ -88,6 +91,17 @@ class DbAPI:
             params=params,
             data=script,
         )
+
+        if (
+            wait
+            and isinstance(response_data, dict)
+            and response_data.get("status") == "pending"
+            and response_data.get("req_id")
+        ):
+            return await wait_for_request_stats(self.client, 
+                str(response_data.get("req_id")), timeout
+            )
+
         return response_data
 
     async def delete_index(

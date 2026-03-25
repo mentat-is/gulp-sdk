@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, AsyncIterator
 
+from gulp.structs import GulpPluginParameters
 from gulp_sdk.models import Operation
 if TYPE_CHECKING:
     from gulp_sdk.client import GulpClient
@@ -184,6 +185,8 @@ class OperationsAPI:
         context_id: str,
         source_name: str,
         *,
+        plugin: str | None = None,
+        plugin_params: GulpPluginParameters | None = None,
         color: str | None = None,
         glyph_id: str | None = None,
         fail_if_exists: bool = False,
@@ -201,7 +204,9 @@ class OperationsAPI:
             operation_id: Parent operation ID.
             context_id: Parent context ID.
             source_name: Name of the source to create.
-            color: Optional CSS hex color.
+            plugin: Optional plugin name.
+            plugin_params: Optional plugin parameters.
+            color: Optional CSS hex color.            
             glyph_id: Optional glyph ID.
             fail_if_exists: Raise an error if the source already exists.
             req_id: Optional request ID.
@@ -216,6 +221,7 @@ class OperationsAPI:
             "context_id": context_id,
             "source_name": source_name,
             "fail_if_exists": fail_if_exists,
+            "plugin": plugin,
         }
         if color is not None:
             params["color"] = color
@@ -223,8 +229,9 @@ class OperationsAPI:
             params["glyph_id"] = glyph_id
         if req_id is not None:
             params["req_id"] = req_id
+        body = plugin_params.model_dump(exclude_none=True) if plugin_params else None
         response_data = await self.client._request(
-            "POST", "/source_create", params=params
+            "POST", "/source_create", params=params, json=body
         )
         return response_data.get("data", {})
 

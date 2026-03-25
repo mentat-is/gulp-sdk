@@ -7,6 +7,8 @@ from pathlib import Path
 import json
 from pydantic import BaseModel, ConfigDict
 
+from gulp_sdk.api.request_utils import wait_for_request_stats
+
 if TYPE_CHECKING:
     from gulp_sdk.client import GulpClient
 
@@ -46,6 +48,8 @@ class IngestAPI:
         context_name: str = "sdk_context",
         ws_id: str | None = None,
         params: dict[str, Any] | None = None,
+        wait: bool = False,
+        timeout: int = 120,
     ) -> IngestResult:
         """
         Ingest a file using specified plugin.
@@ -99,7 +103,7 @@ class IngestAPI:
         )
 
         result_data = response_data.get("data", {})
-        return IngestResult.model_validate(
+        result = IngestResult.model_validate(
             {
                 "req_id": response_data.get("req_id", ""),
                 "status": response_data.get("status", "pending"),
@@ -107,12 +111,26 @@ class IngestAPI:
             }
         )
 
+        if wait and result.status == "pending" and result.req_id:
+            stats = await wait_for_request_stats(self.client, result.req_id, timeout)
+            if isinstance(stats, dict):
+                return IngestResult.model_validate(
+                    {
+                        "req_id": result.req_id,
+                        "status": str(stats.get("status", result.status)),
+                    }
+                )
+
+        return result
+
     async def raw(
         self,
         operation_id: str,
         plugin_name: str,
         data: dict[str, Any] | str | bytes,
         params: dict[str, Any] | None = None,
+        wait: bool = False,
+        timeout: int = 120,
     ) -> IngestResult:
         """
         Ingest raw data using specified plugin.
@@ -168,7 +186,7 @@ class IngestAPI:
         )
 
         result_data = response_data.get("data", {})
-        return IngestResult.model_validate(
+        result = IngestResult.model_validate(
             {
                 "req_id": response_data.get("req_id", ""),
                 "status": response_data.get("status", "pending"),
@@ -176,12 +194,26 @@ class IngestAPI:
             }
         )
 
+        if wait and result.status == "pending" and result.req_id:
+            stats = await wait_for_request_stats(self.client, result.req_id, timeout)
+            if isinstance(stats, dict):
+                return IngestResult.model_validate(
+                    {
+                        "req_id": result.req_id,
+                        "status": str(stats.get("status", result.status)),
+                    }
+                )
+
+        return result
+
     async def zip(
         self,
         operation_id: str,
         plugin_name: str,
         zipfile_path: str,
         params: dict[str, Any] | None = None,
+        wait: bool = False,
+        timeout: int = 120,
     ) -> IngestResult:
         """
         Ingest ZIP archive using specified plugin.
@@ -223,13 +255,25 @@ class IngestAPI:
         )
 
         result_data = response_data.get("data", {})
-        return IngestResult.model_validate(
+        result = IngestResult.model_validate(
             {
                 "req_id": response_data.get("req_id", ""),
                 "status": response_data.get("status", "pending"),
                 **(result_data if isinstance(result_data, dict) else {}),
             }
         )
+
+        if wait and result.status == "pending" and result.req_id:
+            stats = await wait_for_request_stats(self.client, result.req_id, timeout)
+            if isinstance(stats, dict):
+                return IngestResult.model_validate(
+                    {
+                        "req_id": result.req_id,
+                        "status": str(stats.get("status", result.status)),
+                    }
+                )
+
+        return result
 
     async def preview(
         self,
@@ -327,6 +371,8 @@ class IngestAPI:
         *,
         ws_id: str | None = None,
         req_id: str | None = None,
+        wait: bool = False,
+        timeout: int = 120,
     ) -> IngestResult:
         """
         Ingest a file into an existing source.
@@ -340,6 +386,8 @@ class IngestAPI:
             file_path: Local path to the file to ingest.
             ws_id: WebSocket ID for progress notifications.
             req_id: Optional request ID.
+            wait: If True, wait for async completion and return final request status.
+            timeout: Max seconds to wait if ``wait`` is True (0 for no timeout).
 
         Returns:
             ``IngestResult`` with ``req_id`` for tracking.
@@ -372,13 +420,27 @@ class IngestAPI:
             headers={"size": str(len(file_bytes))},
             params=params,
         )
-        return IngestResult.model_validate(
+        result = IngestResult.model_validate(
             {
                 "req_id": response_data.get("req_id", ""),
                 "status": response_data.get("status", "pending"),
                 **(response_data.get("data", {}) or {}),
             }
         )
+
+        if wait and result.status == "pending" and result.req_id:
+            stats = await wait_for_request_stats(self.client, result.req_id, timeout)
+            if isinstance(stats, dict):
+                # Only return stable, validated fields to avoid validation errors
+                # when the backend returns unexpected types in stats.
+                return IngestResult.model_validate(
+                    {
+                        "req_id": result.req_id,
+                        "status": str(stats.get("status", result.status)),
+                    }
+                )
+
+        return result
 
     async def file_local(
         self,
@@ -392,6 +454,8 @@ class IngestAPI:
         flt: dict[str, Any] | None = None,
         delete_after: bool = False,
         req_id: str | None = None,
+        wait: bool = False,
+        timeout: int = 120,
     ) -> IngestResult:
         """
         Ingest a file that already resides on the server's local storage.
@@ -431,13 +495,25 @@ class IngestAPI:
         response_data = await self.client._request(
             "POST", "/ingest_file_local", params=params
         )
-        return IngestResult.model_validate(
+        result = IngestResult.model_validate(
             {
                 "req_id": response_data.get("req_id", ""),
                 "status": response_data.get("status", "pending"),
                 **(response_data.get("data", {}) or {}),
             }
         )
+
+        if wait and result.status == "pending" and result.req_id:
+            stats = await wait_for_request_stats(self.client, result.req_id, timeout)
+            if isinstance(stats, dict):
+                return IngestResult.model_validate(
+                    {
+                        "req_id": result.req_id,
+                        "status": str(stats.get("status", result.status)),
+                    }
+                )
+
+        return result
 
     async def file_local_to_source(
         self,
@@ -449,6 +525,8 @@ class IngestAPI:
         flt: dict[str, Any] | None = None,
         delete_after: bool = False,
         req_id: str | None = None,
+        wait: bool = False,
+        timeout: int = 120,
     ) -> IngestResult:
         """
         Ingest a server-local file into an existing source.
@@ -489,13 +567,25 @@ class IngestAPI:
             params=params,
             json=body or None,
         )
-        return IngestResult.model_validate(
+        result = IngestResult.model_validate(
             {
                 "req_id": response_data.get("req_id", ""),
                 "status": response_data.get("status", "pending"),
                 **(response_data.get("data", {}) or {}),
             }
         )
+
+        if wait and result.status == "pending" and result.req_id:
+            stats = await wait_for_request_stats(self.client, result.req_id, timeout)
+            if isinstance(stats, dict):
+                return IngestResult.model_validate(
+                    {
+                        "req_id": result.req_id,
+                        "status": str(stats.get("status", result.status)),
+                    }
+                )
+
+        return result
 
     async def zip_local(
         self,
@@ -507,6 +597,8 @@ class IngestAPI:
         flt: dict[str, Any] | None = None,
         delete_after: bool = False,
         req_id: str | None = None,
+        wait: bool = False,
+        timeout: int = 120,
     ) -> IngestResult:
         """
         Ingest a ZIP archive that resides on the server's local storage.
@@ -542,13 +634,25 @@ class IngestAPI:
         response_data = await self.client._request(
             "POST", "/ingest_zip_local", params=params
         )
-        return IngestResult.model_validate(
+        result = IngestResult.model_validate(
             {
                 "req_id": response_data.get("req_id", ""),
                 "status": response_data.get("status", "pending"),
                 **(response_data.get("data", {}) or {}),
             }
         )
+
+        if wait and result.status == "pending" and result.req_id:
+            stats = await wait_for_request_stats(self.client, result.req_id, timeout)
+            if isinstance(stats, dict):
+                return IngestResult.model_validate(
+                    {
+                        "req_id": result.req_id,
+                        "status": str(stats.get("status", result.status)),
+                    }
+                )
+
+        return result
 
     async def local_list(
         self,

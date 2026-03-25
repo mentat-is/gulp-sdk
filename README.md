@@ -225,16 +225,10 @@ Run tests:
 # Unit tests (no dependencies)
 pytest -v -s -x tests/unit
 
-# Integration tests (requires live Gulp server listening on localhost:8080)
-pytest -v -s -x tests/integration
-
-# End-to-end tests (requires live Gulp server listening on localhost:8080)
-pytest -v -s -x tests/e2e
-
-# All with coverage
-pytest -v -s -x --cov=gulp_sdk tests/
+# minimal integration tests, requires live Gulp server on localhost:8080
+pytest -v -s -x tests/integration  
 ```
 
-## License
+> to run full integration test suite, look at gulp [gulp testing documentation](https://github.com/mentat-is/gulp/blob/develop/docs/testing.md)
 
-MIT
+

@@ -34,6 +34,8 @@ Quick example::
 import inspect
 from typing import TYPE_CHECKING, Any
 
+from gulp_sdk.api.request_utils import wait_for_request_stats
+
 if TYPE_CHECKING:
     from gulp_sdk.client import GulpClient
 
@@ -58,6 +60,8 @@ class QueriesAPI:
         ws_id: str | None = None,
         q_options: dict[str, Any] | None = None,
         req_id: str | None = None,
+        wait: bool = False,
+        timeout: int = 120,
     ) -> dict[str, Any]:
         """
         Query Gulp using raw OpenSearch DSL.
@@ -91,6 +95,17 @@ class QueriesAPI:
         response_data = await self.client._request(
             "POST", "/query_raw", json=body, params=params
         )
+
+        if (
+            wait
+            and isinstance(response_data, dict)
+            and response_data.get("status") == "pending"
+            and response_data.get("req_id")
+        ):
+            return await wait_for_request_stats(self.client, 
+                str(response_data.get("req_id")), timeout
+            )
+
         return response_data
 
     async def query_gulp(
@@ -101,6 +116,8 @@ class QueriesAPI:
         flt: dict[str, Any] | None = None,
         q_options: dict[str, Any] | None = None,
         req_id: str | None = None,
+        wait: bool = False,
+        timeout: int = 120,
     ) -> dict[str, Any]:
         """
         Query Gulp using the simplified ``GulpQueryFilter`` format.
@@ -134,6 +151,17 @@ class QueriesAPI:
         response_data = await self.client._request(
             "POST", "/query_gulp", json=body, params=params
         )
+
+        if (
+            wait
+            and isinstance(response_data, dict)
+            and response_data.get("status") == "pending"
+            and response_data.get("req_id")
+        ):
+            return await wait_for_request_stats(self.client, 
+                str(response_data.get("req_id")), timeout
+            )
+
         return response_data
 
     async def query_external(
@@ -146,6 +174,8 @@ class QueriesAPI:
         ws_id: str | None = None,
         q_options: dict[str, Any] | None = None,
         req_id: str | None = None,
+        wait: bool = False,
+        timeout: int = 120,
     ) -> dict[str, Any]:
         """
         Query an external data source and ingest results into Gulp.
@@ -179,6 +209,17 @@ class QueriesAPI:
         response_data = await self.client._request(
             "POST", "/query_external", json=body, params=params
         )
+
+        if (
+            wait
+            and isinstance(response_data, dict)
+            and response_data.get("status") == "pending"
+            and response_data.get("req_id")
+        ):
+            return await wait_for_request_stats(self.client, 
+                str(response_data.get("req_id")), timeout
+            )
+
         return response_data
 
     async def query_sigma(
@@ -195,6 +236,8 @@ class QueriesAPI:
         tags: list[str] | None = None,
         q_options: dict[str, Any] | None = None,
         req_id: str | None = None,
+        wait: bool = False,
+        timeout: int = 120,
     ) -> dict[str, Any]:
         """
         Query using Sigma rules.
@@ -240,6 +283,17 @@ class QueriesAPI:
         response_data = await self.client._request(
             "POST", "/query_sigma", json=body, params=params
         )
+
+        if (
+            wait
+            and isinstance(response_data, dict)
+            and response_data.get("status") == "pending"
+            and response_data.get("req_id")
+        ):
+            return await wait_for_request_stats(self.client, 
+                str(response_data.get("req_id")), timeout
+            )
+
         return response_data
 
     async def query_sigma_zip(
@@ -256,6 +310,8 @@ class QueriesAPI:
         tags: list[str] | None = None,
         q_options: dict[str, Any] | None = None,
         req_id: str | None = None,
+        wait: bool = False,
+        timeout: int = 120,
     ) -> dict[str, Any]:
         """
         Query using a ZIP archive containing Sigma rules.
@@ -318,6 +374,17 @@ class QueriesAPI:
             headers={"size": str(len(zip_bytes))},
             params=params,
         )
+
+        if (
+            wait
+            and isinstance(response_data, dict)
+            and response_data.get("status") == "pending"
+            and response_data.get("req_id")
+        ):
+            return await wait_for_request_stats(self.client, 
+                str(response_data.get("req_id")), timeout
+            )
+
         return response_data
 
     async def query_single_id(

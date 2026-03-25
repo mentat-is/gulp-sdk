@@ -4,6 +4,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
+from gulp_sdk.exceptions import NotFoundError
+
 import pytest
 
 
@@ -227,6 +229,167 @@ async def test_enrich_all_methods(dummy_client):
     await api.enrich_remove("op1", "risk", flt={"operation_ids": ["op1"]})
 
     assert dummy_client._request.await_count >= 7
+
+
+@pytest.mark.unit
+async def test_enrich_wait_retries_transient_request_stats_notfound(dummy_client):
+    from gulp_sdk.api.enrich import EnrichAPI
+    from gulp_sdk.exceptions import NotFoundError
+
+    api = EnrichAPI(dummy_client)
+    dummy_client._request.return_value = {"status": "pending", "req_id": "req-wait", "data": {}}
+    calls = {"n": 0}
+
+    async def _request_get(_req_id: str):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise NotFoundError(
+                'GulpRequestStats with id "req-wait" not found',
+                status_code=404,
+                response_data={"__error": {"name": "ObjectNotFound"}},
+            )
+        return {"status": "done", "id": "req-wait"}
+
+    dummy_client.plugins = SimpleNamespace(
+        request_get=AsyncMock(side_effect=_request_get),
+    )
+
+    out = await api.update_documents(
+        "op1",
+        {"a": 1},
+        flt={"operation_ids": ["op1"]},
+        wait=True,
+        timeout=5,
+    )
+
+    assert out.get("status") == "done"
+    assert calls["n"] >= 2
+
+
+@pytest.mark.unit
+async def test_queries_wait_retries_transient_request_stats_notfound(dummy_client):
+    from gulp_sdk.api.queries import QueriesAPI
+
+    api = QueriesAPI(dummy_client)
+    dummy_client._request.return_value = {
+        "status": "pending",
+        "req_id": "req-wait",
+        "data": {},
+    }
+    calls = {"n": 0}
+
+    async def _request_get(_req_id: str):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise NotFoundError(
+                'GulpRequestStats with id "req-wait" not found',
+                status_code=404,
+                response_data={"__error": {"name": "ObjectNotFound"}},
+            )
+        return {"status": "done", "id": "req-wait"}
+
+    dummy_client.plugins = SimpleNamespace(request_get=AsyncMock(side_effect=_request_get))
+
+    out = await api.query_gulp(
+        operation_id="op1",
+        flt={"operation_ids": ["op1"]},
+        wait=True,
+        timeout=5,
+    )
+
+    assert out.get("status") == "done"
+    assert calls["n"] >= 2
+
+
+@pytest.mark.unit
+async def test_enrich_wait_raises_non_transient_notfound(dummy_client):
+    from gulp_sdk.api.enrich import EnrichAPI
+    from gulp_sdk.exceptions import NotFoundError
+
+    api = EnrichAPI(dummy_client)
+    dummy_client._request.return_value = {"status": "pending", "req_id": "req-wait", "data": {}}
+    dummy_client.plugins = SimpleNamespace(
+        request_get=AsyncMock(
+            side_effect=NotFoundError(
+                'Operation with id "op1" not found',
+                status_code=404,
+                response_data={"__error": {"name": "ObjectNotFound"}},
+            )
+        )
+    )
+
+    with pytest.raises(NotFoundError):
+        await api.tag_documents(
+            "op1",
+            ["t1"],
+            flt={"operation_ids": ["op1"]},
+            wait=True,
+            timeout=5,
+        )
+
+
+@pytest.mark.unit
+async def test_enrich_tag_wait_retries_transient_request_stats_notfound(dummy_client):
+    from gulp_sdk.api.enrich import EnrichAPI
+    from gulp_sdk.exceptions import NotFoundError
+
+    api = EnrichAPI(dummy_client)
+    dummy_client._request.return_value = {"status": "pending", "req_id": "rwait", "data": {}}
+    calls = {"n": 0}
+
+    async def _request_get(_req_id: str):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise NotFoundError(
+                'GulpRequestStats with id "rwait" not found',
+                status_code=404,
+                response_data={"__error": {"name": "ObjectNotFound"}},
+            )
+        return {"status": "done", "id": "rwait"}
+
+    dummy_client.plugins = SimpleNamespace(request_get=AsyncMock(side_effect=_request_get))
+
+    out = await api.tag_documents(
+        "op1",
+        ["t1"],
+        flt={"operation_ids": ["op1"]},
+        wait=True,
+        timeout=5,
+    )
+    assert out.get("status") == "done"
+    assert calls["n"] >= 2
+
+
+@pytest.mark.unit
+async def test_enrich_enrich_documents_wait_retries_transient_request_stats_notfound(dummy_client):
+    from gulp_sdk.api.enrich import EnrichAPI
+    from gulp_sdk.exceptions import NotFoundError
+
+    api = EnrichAPI(dummy_client)
+    dummy_client._request.return_value = {"status": "pending", "req_id": "req-wait", "data": {}}
+    calls = {"n": 0}
+
+    async def _request_get(_req_id: str):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise NotFoundError(
+                'GulpRequestStats with id "req-wait" not found',
+                status_code=404,
+                response_data={"__error": {"name": "ObjectNotFound"}},
+            )
+        return {"status": "done", "id": "req-wait"}
+
+    dummy_client.plugins = SimpleNamespace(request_get=AsyncMock(side_effect=_request_get))
+
+    out = await api.enrich_documents(
+        "op1",
+        "my_plugin",
+        {"a": 1},
+        wait=True,
+        timeout=5,
+    )
+    assert out.get("status") == "done"
+    assert calls["n"] >= 2
 
 
 @pytest.mark.unit
@@ -609,16 +772,34 @@ async def test_users_and_groups_optional_params_and_empty_update_body(dummy_clie
 
 
 @pytest.mark.unit
-async def test_db_plugins_and_documents_shim(dummy_client, tmp_path: Path):
+async def test_db_plugins_shim(dummy_client, tmp_path: Path):
     from gulp_sdk.api.db import DbAPI
     from gulp_sdk.api.plugins import PluginsAPI
-    from gulp_sdk.api.documents import DocumentsAPI
 
     db = DbAPI(dummy_client)
     plugins = PluginsAPI(dummy_client)
 
     dummy_client._request.return_value = {"status": "pending", "req_id": "r1", "data": {}}
     assert isinstance(await db.rebase_by_query("op1", "ws1", 1000, flt={}), dict)
+
+    # verify wait path for pending request
+    calls = {"n": 0}
+
+    async def _request_get(_req_id: str):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise NotFoundError(
+                'GulpRequestStats with id "r1" not found',
+                status_code=404,
+                response_data={"__error": {"name": "ObjectNotFound"}},
+            )
+        return {"status": "done", "id": "r1"}
+
+    dummy_client.plugins = SimpleNamespace(request_get=AsyncMock(side_effect=_request_get))
+    dummy_client._request.return_value = {"status": "pending", "req_id": "r1", "data": {}}
+    out = await db.rebase_by_query("op1", "ws1", 1000, flt={}, wait=True, timeout=5)
+    assert out.get("status") == "done"
+    assert calls["n"] >= 2
 
     dummy_client._request.return_value = {"data": {"index": "op1"}}
     assert (await db.delete_index("op1"))["index"] == "op1"
@@ -666,10 +847,6 @@ async def test_db_plugins_and_documents_shim(dummy_client, tmp_path: Path):
 
     dummy_client._request.return_value = {"data": {"version": "1.0"}}
     assert await plugins.version() == "1.0"
-
-    docs = DocumentsAPI(dummy_client)
-    with pytest.raises(NotImplementedError):
-        _ = docs.get  # noqa: B018
 
 
 @pytest.mark.unit
@@ -770,6 +947,147 @@ async def test_ingest_preview_and_file_to_source(dummy_client, tmp_path: Path):
     dummy_client._request.return_value = {"status": "pending", "req_id": "r9", "data": {}}
     out = await api.file_to_source("src1", str(f))
     assert out.req_id == "r9"
+
+
+@pytest.mark.unit
+async def test_ingest_file_to_source_wait_retries_transient_request_stats_notfound(dummy_client, tmp_path: Path):
+    from gulp_sdk.api.ingest import IngestAPI
+    from gulp_sdk.exceptions import NotFoundError
+
+    api = IngestAPI(dummy_client)
+    f = tmp_path / "wait.evtx"
+    f.write_bytes(b"x")
+
+    dummy_client._request.return_value = {"status": "pending", "req_id": "rwait", "data": {}}
+    calls = {"n": 0}
+
+    async def _request_get(_req_id: str):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise NotFoundError(
+                'GulpRequestStats with id "rwait" not found',
+                status_code=404,
+                response_data={"__error": {"name": "ObjectNotFound"}},
+            )
+        return {"status": "done", "id": "rwait"}
+
+    dummy_client.plugins = SimpleNamespace(
+        request_get=AsyncMock(side_effect=_request_get),
+    )
+
+    out = await api.file_to_source("src1", str(f), wait=True, timeout=5)
+    assert out.req_id == "rwait"
+    assert out.status == "done"
+    assert calls["n"] >= 2
+
+
+@pytest.mark.unit
+async def test_ingest_file_to_source_wait_raises_non_transient_notfound(dummy_client, tmp_path: Path):
+    from gulp_sdk.api.ingest import IngestAPI
+    from gulp_sdk.exceptions import NotFoundError
+
+    api = IngestAPI(dummy_client)
+    f = tmp_path / "wait2.evtx"
+    f.write_bytes(b"x")
+
+    dummy_client._request.return_value = {"status": "pending", "req_id": "rwait2", "data": {}}
+    dummy_client.plugins = SimpleNamespace(
+        request_get=AsyncMock(
+            side_effect=NotFoundError(
+                'Operation with id "op1" not found',
+                status_code=404,
+                response_data={"__error": {"name": "ObjectNotFound"}},
+            )
+        )
+    )
+
+    with pytest.raises(NotFoundError):
+        await api.file_to_source("src1", str(f), wait=True, timeout=5)
+
+
+@pytest.mark.unit
+async def test_ingest_file_wait_retries_transient_request_stats_notfound(dummy_client, tmp_path: Path):
+    from gulp_sdk.api.ingest import IngestAPI
+    from gulp_sdk.exceptions import NotFoundError
+
+    api = IngestAPI(dummy_client)
+    f = tmp_path / "wait_file.evtx"
+    f.write_bytes(b"x")
+
+    dummy_client._request.return_value = {"status": "pending", "req_id": "rwait_file", "data": {}}
+    calls = {"n": 0}
+
+    async def _request_get(_req_id: str):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise NotFoundError(
+                'GulpRequestStats with id "rwait_file" not found',
+                status_code=404,
+                response_data={"__error": {"name": "ObjectNotFound"}},
+            )
+        return {"status": "done", "id": "rwait_file"}
+
+    dummy_client.plugins = SimpleNamespace(request_get=AsyncMock(side_effect=_request_get))
+
+    out = await api.file("op1", "win_evtx", str(f), wait=True, timeout=5)
+    assert out.status == "done"
+    assert calls["n"] >= 2
+
+
+@pytest.mark.unit
+async def test_ingest_raw_wait_retries_transient_request_stats_notfound(dummy_client):
+    from gulp_sdk.api.ingest import IngestAPI
+    from gulp_sdk.exceptions import NotFoundError
+
+    api = IngestAPI(dummy_client)
+
+    dummy_client._request.return_value = {"status": "pending", "req_id": "rwait_raw", "data": {}}
+    calls = {"n": 0}
+
+    async def _request_get(_req_id: str):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise NotFoundError(
+                'GulpRequestStats with id "rwait_raw" not found',
+                status_code=404,
+                response_data={"__error": {"name": "ObjectNotFound"}},
+            )
+        return {"status": "done", "id": "rwait_raw"}
+
+    dummy_client.plugins = SimpleNamespace(request_get=AsyncMock(side_effect=_request_get))
+
+    out = await api.raw("op1", "raw", [{"a": 1}], wait=True, timeout=5)
+    assert out.status == "done"
+    assert calls["n"] >= 2
+
+
+@pytest.mark.unit
+async def test_ingest_zip_wait_retries_transient_request_stats_notfound(dummy_client, tmp_path: Path):
+    from gulp_sdk.api.ingest import IngestAPI
+    from gulp_sdk.exceptions import NotFoundError
+
+    api = IngestAPI(dummy_client)
+    zip_path = tmp_path / "w.zip"
+    zip_path.write_bytes(b"PK\x03\x04")
+
+    dummy_client._request.return_value = {"status": "pending", "req_id": "rwait_zip", "data": {}}
+    calls = {"n": 0}
+
+    async def _request_get(_req_id: str):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            raise NotFoundError(
+                'GulpRequestStats with id "rwait_zip" not found',
+                status_code=404,
+                response_data={"__error": {"name": "ObjectNotFound"}},
+            )
+        return {"status": "done", "id": "rwait_zip"}
+
+    dummy_client.plugins = SimpleNamespace(request_get=AsyncMock(side_effect=_request_get))
+
+    out = await api.zip("op1", "win_evtx", str(zip_path), wait=True, timeout=5)
+    assert out.status == "done"
+    assert calls["n"] >= 2
 
 
 @pytest.mark.unit

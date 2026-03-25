@@ -26,6 +26,7 @@ Quick example::
 """
 
 from typing import TYPE_CHECKING, Any
+from gulp_sdk.api.request_utils import wait_for_request_stats
 
 if TYPE_CHECKING:
     from gulp_sdk.client import GulpClient
@@ -52,6 +53,8 @@ class EnrichAPI:
         flt: dict[str, Any] | None = None,
         plugin_params: dict[str, Any] | None = None,
         req_id: str | None = None,
+        wait: bool = False,
+        timeout: int = 120,
     ) -> dict[str, Any]:
         """
         Enrich multiple documents matching a filter using a plugin (async).
@@ -83,6 +86,17 @@ class EnrichAPI:
         response_data = await self.client._request(
             "POST", "/enrich_documents", json=body, params=params
         )
+
+        if (
+            wait
+            and isinstance(response_data, dict)
+            and response_data.get("status") == "pending"
+            and response_data.get("req_id")
+        ):
+            return await wait_for_request_stats(
+                self.client, str(response_data.get("req_id")), timeout
+            )
+
         return response_data
 
     async def enrich_single_id(
@@ -135,6 +149,8 @@ class EnrichAPI:
         ws_id: str | None = None,
         flt: dict[str, Any] | None = None,
         req_id: str | None = None,
+        wait: bool = False,
+        timeout: int = 120,
     ) -> dict[str, Any]:
         """
         Directly update fields on multiple documents (async, no plugin).
@@ -145,6 +161,8 @@ class EnrichAPI:
             ws_id: WebSocket ID.
             flt: ``GulpQueryFilter`` dict.
             req_id: Optional request ID.
+            wait: If True, wait for the async request to complete and return final status.
+            timeout: Max seconds to wait if ``wait`` is True (0 for no timeout).
 
         Returns:
             ``{"status": "pending", "req_id": ...}``.
@@ -162,6 +180,12 @@ class EnrichAPI:
         response_data = await self.client._request(
             "POST", "/update_documents", json=body, params=params
         )
+        # Optionally wait for completion of the async request
+        if wait and isinstance(response_data, dict) and response_data.get("status") == "pending":
+            req = response_data.get("req_id")
+            if req:
+                return await wait_for_request_stats(self.client, str(req), timeout)
+
         return response_data
 
     async def update_single_id(
@@ -207,6 +231,8 @@ class EnrichAPI:
         ws_id: str | None = None,
         flt: dict[str, Any] | None = None,
         req_id: str | None = None,
+        wait: bool = False,
+        timeout: int = 120,
     ) -> dict[str, Any]:
         """
         Add tags to multiple documents matching a filter (async).
@@ -217,6 +243,8 @@ class EnrichAPI:
             ws_id: WebSocket ID.
             flt: ``GulpQueryFilter`` dict.
             req_id: Optional request ID.
+            wait: If True, wait for the async request to complete and return final status.
+            timeout: Max seconds to wait if ``wait`` is True (0 for no timeout).
 
         Returns:
             ``{"status": "pending", "req_id": ...}``.
@@ -233,6 +261,12 @@ class EnrichAPI:
         response_data = await self.client._request(
             "POST", "/tag_documents", json=body, params=params
         )
+        # Optionally wait for completion of the async request
+        if wait and isinstance(response_data, dict) and response_data.get("status") == "pending":
+            req = response_data.get("req_id")
+            if req:
+                return await wait_for_request_stats(self.client, str(req), timeout)
+
         return response_data
 
     async def tag_single_id(
