@@ -2,7 +2,7 @@
 Ingestion API — file/raw/zip ingestion, preview, status.
 """
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 from pathlib import Path
 import json
 from pydantic import BaseModel, ConfigDict
@@ -11,6 +11,7 @@ from gulp_sdk.api.request_utils import wait_for_request_stats
 
 if TYPE_CHECKING:
     from gulp_sdk.client import GulpClient
+    from gulp_sdk.websocket import WSMessage
 
 
 class IngestResult(BaseModel):
@@ -50,6 +51,7 @@ class IngestAPI:
         params: dict[str, Any] | None = None,
         wait: bool = False,
         timeout: int = 120,
+        ws_callback: "Callable[[WSMessage], None] | None" = None,
     ) -> IngestResult:
         """
         Ingest a file using specified plugin.
@@ -112,7 +114,7 @@ class IngestAPI:
         )
 
         if wait and result.status == "pending" and result.req_id:
-            stats = await wait_for_request_stats(self.client, result.req_id, timeout)
+            stats = await wait_for_request_stats(self.client, result.req_id, timeout, ws_callback=ws_callback)
             if isinstance(stats, dict):
                 return IngestResult.model_validate(
                     {
@@ -131,6 +133,7 @@ class IngestAPI:
         params: dict[str, Any] | None = None,
         wait: bool = False,
         timeout: int = 120,
+        ws_callback: "Callable[[WSMessage], None] | None" = None,
     ) -> IngestResult:
         """
         Ingest raw data using specified plugin.
@@ -195,7 +198,7 @@ class IngestAPI:
         )
 
         if wait and result.status == "pending" and result.req_id:
-            stats = await wait_for_request_stats(self.client, result.req_id, timeout)
+            stats = await wait_for_request_stats(self.client, result.req_id, timeout, ws_callback=ws_callback)
             if isinstance(stats, dict):
                 return IngestResult.model_validate(
                     {
@@ -214,6 +217,7 @@ class IngestAPI:
         params: dict[str, Any] | None = None,
         wait: bool = False,
         timeout: int = 120,
+        ws_callback: "Callable[[WSMessage], None] | None" = None,
     ) -> IngestResult:
         """
         Ingest ZIP archive using specified plugin.
@@ -264,7 +268,7 @@ class IngestAPI:
         )
 
         if wait and result.status == "pending" and result.req_id:
-            stats = await wait_for_request_stats(self.client, result.req_id, timeout)
+            stats = await wait_for_request_stats(self.client, result.req_id, timeout, ws_callback=ws_callback)
             if isinstance(stats, dict):
                 return IngestResult.model_validate(
                     {
@@ -373,6 +377,7 @@ class IngestAPI:
         req_id: str | None = None,
         wait: bool = False,
         timeout: int = 120,
+        ws_callback: "Callable[[WSMessage], None] | None" = None,
     ) -> IngestResult:
         """
         Ingest a file into an existing source.
@@ -429,7 +434,7 @@ class IngestAPI:
         )
 
         if wait and result.status == "pending" and result.req_id:
-            stats = await wait_for_request_stats(self.client, result.req_id, timeout)
+            stats = await wait_for_request_stats(self.client, result.req_id, timeout, ws_callback=ws_callback)
             if isinstance(stats, dict):
                 # Only return stable, validated fields to avoid validation errors
                 # when the backend returns unexpected types in stats.
@@ -456,6 +461,7 @@ class IngestAPI:
         req_id: str | None = None,
         wait: bool = False,
         timeout: int = 120,
+        ws_callback: "Callable[[WSMessage], None] | None" = None,
     ) -> IngestResult:
         """
         Ingest a file that already resides on the server's local storage.
@@ -504,7 +510,7 @@ class IngestAPI:
         )
 
         if wait and result.status == "pending" and result.req_id:
-            stats = await wait_for_request_stats(self.client, result.req_id, timeout)
+            stats = await wait_for_request_stats(self.client, result.req_id, timeout, ws_callback=ws_callback)
             if isinstance(stats, dict):
                 return IngestResult.model_validate(
                     {
@@ -527,6 +533,7 @@ class IngestAPI:
         req_id: str | None = None,
         wait: bool = False,
         timeout: int = 120,
+        ws_callback: "Callable[[WSMessage], None] | None" = None,
     ) -> IngestResult:
         """
         Ingest a server-local file into an existing source.
@@ -576,7 +583,7 @@ class IngestAPI:
         )
 
         if wait and result.status == "pending" and result.req_id:
-            stats = await wait_for_request_stats(self.client, result.req_id, timeout)
+            stats = await wait_for_request_stats(self.client, result.req_id, timeout, ws_callback=ws_callback)
             if isinstance(stats, dict):
                 return IngestResult.model_validate(
                     {
@@ -599,6 +606,7 @@ class IngestAPI:
         req_id: str | None = None,
         wait: bool = False,
         timeout: int = 120,
+        ws_callback: "Callable[[WSMessage], None] | None" = None,
     ) -> IngestResult:
         """
         Ingest a ZIP archive that resides on the server's local storage.
@@ -643,7 +651,7 @@ class IngestAPI:
         )
 
         if wait and result.status == "pending" and result.req_id:
-            stats = await wait_for_request_stats(self.client, result.req_id, timeout)
+            stats = await wait_for_request_stats(self.client, result.req_id, timeout, ws_callback=ws_callback)
             if isinstance(stats, dict):
                 return IngestResult.model_validate(
                     {

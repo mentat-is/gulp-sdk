@@ -73,6 +73,18 @@ This page maps the main `gulp-sdk` API groups to the corresponding methods. All 
 
 - Index mappings, resets, management endpoints (see `src/gulp_sdk/api/db.py`).
 
+## Request status updates: websocket vs polling
+
+Async operations (ingest/query) may return `pending` and stream results through websocket notifications.
+
+- Preferred: `wait_for_request_stats(client, req_id, timeout, ws_callback=None)` in `gulp_sdk.api.request_utils`.
+- Alternative: poll with `client.plugins.request_get(req_id)`.
+
+For full examples, see:
+
+- `docs/examples/request_status_vs_polling.py`
+- Advanced integration example: `tests/integration/test_stress.py` in the main `gulp` repository.
+
 ---
 
 For deeper info and method argument details, consult the source and docstrings in `src/gulp_sdk/api/`.

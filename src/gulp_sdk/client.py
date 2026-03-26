@@ -18,7 +18,7 @@ WebSocket usage:
     ```
 """
 
-from typing import Any
+from typing import Any, Callable
 import httpx
 import inspect
 import logging
@@ -27,7 +27,7 @@ import time
 
 from gulp_sdk.exceptions import GulpSDKError, AuthenticationError
 from gulp_sdk.models import JSendResponse, TokenSession
-from gulp_sdk.websocket import GulpWebSocket
+from gulp_sdk.websocket import GulpWebSocket, WSMessage, WSMessageType
 from gulp_sdk.utils import RequestLogger, RetryPolicy, format_error_message
 
 logger = logging.getLogger(__name__)
@@ -124,6 +124,44 @@ class GulpClient:
         self._ws = self.websocket()
         await self._ws.connect()
         return self._ws
+
+    async def register_ws_message_handler(
+        self,
+        message_type: WSMessageType,
+        callback: Callable[[WSMessage], Any],
+    ) -> GulpWebSocket:
+        """
+        Register callback on the default websocket connection.
+
+        This helper ensures the websocket is connected before subscription,
+        so callers can consume events without manually managing the socket.
+
+        Args:
+            message_type: WebSocket message type to subscribe to.
+            callback: Callback invoked for matching messages.
+
+        Returns:
+            Connected websocket instance used for the subscription.
+        """
+        ws = await self.ensure_websocket()
+        ws.on_message(message_type, callback)
+        return ws
+
+    def unregister_ws_message_handler(
+        self,
+        message_type: WSMessageType,
+        callback: Callable[[WSMessage], Any],
+    ) -> None:
+        """
+        Unregister callback from the default websocket connection.
+
+        Args:
+            message_type: WebSocket message type previously subscribed.
+            callback: Callback to unregister.
+        """
+        if self._ws is None:
+            return
+        self._ws.off_message(message_type, callback)
 
     @property
     def _client(self) -> httpx.AsyncClient:

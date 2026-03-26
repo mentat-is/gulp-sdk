@@ -24,11 +24,12 @@ Quick example::
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 from gulp_sdk.api.request_utils import wait_for_request_stats
 
 if TYPE_CHECKING:
     from gulp_sdk.client import GulpClient
+    from gulp_sdk.websocket import WSMessage
 
 
 class DbAPI:
@@ -45,7 +46,7 @@ class DbAPI:
     async def rebase_by_query(
         self,
         operation_id: str,
-        ws_id: str,
+        ws_id: str | None,
         offset_msec: int,
         *,
         flt: dict[str, Any] | None = None,
@@ -53,6 +54,7 @@ class DbAPI:
         req_id: str | None = None,
         wait: bool = False,
         timeout: int = 120,
+        ws_callback: "Callable[[WSMessage], None] | None" = None,
     ) -> dict[str, Any]:
         """
         Rebase (shift) document timestamps in-place using ``update_by_query``.
@@ -79,7 +81,7 @@ class DbAPI:
         """
         params: dict[str, Any] = {
             "operation_id": operation_id,
-            "ws_id": ws_id,
+            "ws_id": ws_id or self.client.ws_id,
             "offset_msec": offset_msec,
         }
         if req_id is not None:
@@ -99,7 +101,7 @@ class DbAPI:
             and response_data.get("req_id")
         ):
             return await wait_for_request_stats(self.client, 
-                str(response_data.get("req_id")), timeout
+                str(response_data.get("req_id")), timeout, ws_callback=ws_callback
             )
 
         return response_data

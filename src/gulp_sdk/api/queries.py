@@ -32,12 +32,13 @@ Quick example::
 """
 
 import inspect
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 from gulp_sdk.api.request_utils import wait_for_request_stats
 
 if TYPE_CHECKING:
     from gulp_sdk.client import GulpClient
+    from gulp_sdk.websocket import WSMessage
 
 
 class QueriesAPI:
@@ -62,6 +63,7 @@ class QueriesAPI:
         req_id: str | None = None,
         wait: bool = False,
         timeout: int = 120,
+        ws_callback: "Callable[[WSMessage], None] | None" = None,
     ) -> dict[str, Any]:
         """
         Query Gulp using raw OpenSearch DSL.
@@ -103,7 +105,7 @@ class QueriesAPI:
             and response_data.get("req_id")
         ):
             return await wait_for_request_stats(self.client, 
-                str(response_data.get("req_id")), timeout
+                str(response_data.get("req_id")), timeout, ws_callback=ws_callback
             )
 
         return response_data
@@ -118,6 +120,7 @@ class QueriesAPI:
         req_id: str | None = None,
         wait: bool = False,
         timeout: int = 120,
+        ws_callback: "Callable[[WSMessage], None] | None" = None,
     ) -> dict[str, Any]:
         """
         Query Gulp using the simplified ``GulpQueryFilter`` format.
@@ -159,7 +162,7 @@ class QueriesAPI:
             and response_data.get("req_id")
         ):
             return await wait_for_request_stats(self.client, 
-                str(response_data.get("req_id")), timeout
+                str(response_data.get("req_id")), timeout, ws_callback=ws_callback
             )
 
         return response_data
@@ -176,6 +179,7 @@ class QueriesAPI:
         req_id: str | None = None,
         wait: bool = False,
         timeout: int = 120,
+        ws_callback: "Callable[[WSMessage], None] | None" = None,
     ) -> dict[str, Any]:
         """
         Query an external data source and ingest results into Gulp.
@@ -217,7 +221,7 @@ class QueriesAPI:
             and response_data.get("req_id")
         ):
             return await wait_for_request_stats(self.client, 
-                str(response_data.get("req_id")), timeout
+                str(response_data.get("req_id")), timeout, ws_callback=ws_callback
             )
 
         return response_data
@@ -238,6 +242,7 @@ class QueriesAPI:
         req_id: str | None = None,
         wait: bool = False,
         timeout: int = 120,
+        ws_callback: "Callable[[WSMessage], None] | None" = None,
     ) -> dict[str, Any]:
         """
         Query using Sigma rules.
@@ -291,7 +296,7 @@ class QueriesAPI:
             and response_data.get("req_id")
         ):
             return await wait_for_request_stats(self.client, 
-                str(response_data.get("req_id")), timeout
+                str(response_data.get("req_id")), timeout, ws_callback=ws_callback
             )
 
         return response_data
@@ -312,6 +317,7 @@ class QueriesAPI:
         req_id: str | None = None,
         wait: bool = False,
         timeout: int = 120,
+        ws_callback: "Callable[[WSMessage], None] | None" = None,
     ) -> dict[str, Any]:
         """
         Query using a ZIP archive containing Sigma rules.
@@ -382,7 +388,7 @@ class QueriesAPI:
             and response_data.get("req_id")
         ):
             return await wait_for_request_stats(self.client, 
-                str(response_data.get("req_id")), timeout
+                str(response_data.get("req_id")), timeout, ws_callback=ws_callback
             )
 
         return response_data

@@ -158,6 +158,17 @@ async with GulpClient("http://localhost:8080") as client:
                 print(f"Query complete: {len(message.data.documents)} results")
 ```
 
+### Request status: websocket vs polling
+
+For async operations, realtime websocket monitoring is recommended; polling is a fallback.
+
+- WebSocket pattern: use `wait_for_request_stats(client, req_id, timeout, ws_callback=...)`.
+- Polling: `client.plugins.request_get(req_id)` in a loop.
+
+See `docs/api_reference.md` for details and examples.
+
+For advanced websocket note/QUERY_DONE tracking, consult `tests/integration/test_stress.py`.
+
 ## Error Handling
 
 ```python

@@ -25,11 +25,12 @@ Quick example::
         )
 """
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 from gulp_sdk.api.request_utils import wait_for_request_stats
 
 if TYPE_CHECKING:
     from gulp_sdk.client import GulpClient
+    from gulp_sdk.websocket import WSMessage
 
 
 class EnrichAPI:
@@ -55,6 +56,7 @@ class EnrichAPI:
         req_id: str | None = None,
         wait: bool = False,
         timeout: int = 120,
+        ws_callback: "Callable[[WSMessage], None] | None" = None,
     ) -> dict[str, Any]:
         """
         Enrich multiple documents matching a filter using a plugin (async).
@@ -94,7 +96,7 @@ class EnrichAPI:
             and response_data.get("req_id")
         ):
             return await wait_for_request_stats(
-                self.client, str(response_data.get("req_id")), timeout
+                self.client, str(response_data.get("req_id")), timeout, ws_callback=ws_callback
             )
 
         return response_data
@@ -151,6 +153,7 @@ class EnrichAPI:
         req_id: str | None = None,
         wait: bool = False,
         timeout: int = 120,
+        ws_callback: "Callable[[WSMessage], None] | None" = None,
     ) -> dict[str, Any]:
         """
         Directly update fields on multiple documents (async, no plugin).
@@ -184,7 +187,7 @@ class EnrichAPI:
         if wait and isinstance(response_data, dict) and response_data.get("status") == "pending":
             req = response_data.get("req_id")
             if req:
-                return await wait_for_request_stats(self.client, str(req), timeout)
+                return await wait_for_request_stats(self.client, str(req), timeout, ws_callback=ws_callback)
 
         return response_data
 
@@ -233,6 +236,7 @@ class EnrichAPI:
         req_id: str | None = None,
         wait: bool = False,
         timeout: int = 120,
+        ws_callback: "Callable[[WSMessage], None] | None" = None,
     ) -> dict[str, Any]:
         """
         Add tags to multiple documents matching a filter (async).
@@ -265,7 +269,7 @@ class EnrichAPI:
         if wait and isinstance(response_data, dict) and response_data.get("status") == "pending":
             req = response_data.get("req_id")
             if req:
-                return await wait_for_request_stats(self.client, str(req), timeout)
+                return await wait_for_request_stats(self.client, str(req), timeout, ws_callback=ws_callback)
 
         return response_data
 

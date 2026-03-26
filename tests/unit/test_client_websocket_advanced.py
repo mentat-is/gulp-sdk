@@ -284,7 +284,6 @@ async def test_client_additional_branches_and_properties(monkeypatch):
     c = GulpClient("https://localhost:8080", token="tok")
 
     # Cover property access branches.
-    _ = c.documents
     _ = c.acl
     _ = c.db
 

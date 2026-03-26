@@ -44,7 +44,13 @@ async def main():
 asyncio.run(main())
 ```
 
-## 4. Common environment variables
+## 4. WebSocket status vs polling
+
+This doc already includes the full details and examples in `docs/api_reference.md`.
+
+Advanced scenarios including `query_sigma_zip` and note creation are in `tests/integration/test_stress.py`.
+
+## 5. Common environment variables
 
 These are used by test fixtures and example scripts; the SDK core (`src/gulp_sdk`) does not directly read them.
 
