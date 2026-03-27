@@ -105,7 +105,7 @@ async def test_low_modules_req_id_and_optional_branches(dummy_client, tmp_path: 
     await enrich.update_single_id("op1", "d1", {"f": "v"}, req_id="r-enrich-upd1")
     await enrich.tag_documents("op1", ["t"], req_id="r-enrich-tag")
     await enrich.tag_single_id("op1", "d1", ["t"], req_id="r-enrich-tag1")
-    await enrich.enrich_remove("op1", "f", req_id="r-enrich-rm")
+    await enrich.enrich_remove("op1", req_id="r-enrich-rm")
 
     dummy_client._request.return_value = {"data": [{"name": "gulp", "endpoint": "/login"}]}
     assert isinstance(await auth.get_available_login_api(), list)
@@ -180,11 +180,15 @@ async def test_websocket_and_client_remaining_branches(monkeypatch):
     ws3 = GulpWebSocket("ws://localhost:8080/ws", "tok", "ws3")
     ws3._connected = True
     ws3._ws = _ClosedWS()
+    ws3._reconnect_after_close = AsyncMock(return_value=False)
     await ws3._receive_loop()
     assert ws3.is_connected is False
 
     # client line 255: force no retry iterations
     c = GulpClient("http://localhost:8080", token="tok")
+    c._http_client = SimpleNamespace(
+        request=AsyncMock(return_value=_Resp(status_code=500, payload={"status": "error", "data": {"msg": "boom"}}))
+    )
     c._retry_policy.max_retries = -1
     with pytest.raises(GulpSDKError):
         await c._request("GET", "/x")

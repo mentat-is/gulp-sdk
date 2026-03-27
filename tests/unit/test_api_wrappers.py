@@ -225,10 +225,13 @@ async def test_enrich_all_methods(dummy_client):
     dummy_client._request.return_value = {"data": {"id": "doc1"}}
     assert (await api.tag_single_id("op1", "doc1", ["t2"]))["id"] == "doc1"
 
-    dummy_client._request.return_value = {"status": "pending", "req_id": "rm", "data": {}}
-    await api.enrich_remove("op1", "risk", flt={"operation_ids": ["op1"]})
+    dummy_client._request.return_value = {"status": "pending", "req_id": "untag", "data": {}}
+    await api.untag_documents("op1", ["t1"], flt={"operation_ids": ["op1"]})
 
-    assert dummy_client._request.await_count >= 7
+    dummy_client._request.return_value = {"status": "pending", "req_id": "rm", "data": {}}
+    await api.enrich_remove("op1", flt={"operation_ids": ["op1"]})
+
+    assert dummy_client._request.await_count >= 8
 
 
 @pytest.mark.unit

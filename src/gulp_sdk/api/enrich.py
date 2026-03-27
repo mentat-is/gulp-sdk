@@ -222,7 +222,7 @@ class EnrichAPI:
             params["req_id"] = req_id
         # Server expects body key `data` for update payload.
         response_data = await self.client._request(
-            "POST", "/update_single_id", json={"data": fields}, params=params
+            "POST", "/update_single_id", json=fields, params=params
         )
         return response_data.get("data", {})
 
@@ -307,21 +307,69 @@ class EnrichAPI:
         )
         return response_data.get("data", {})
 
+    async def untag_documents(
+        self,
+        operation_id: str,
+        tags: list[str],
+        *,
+        ws_id: str | None = None,
+        flt: dict[str, Any] | None = None,
+        req_id: str | None = None,
+        wait: bool = False,
+        timeout: int = 120,
+        ws_callback: "Callable[[WSMessage], None] | None" = None,
+    ) -> dict[str, Any]:
+        """
+        Remove tags from documents matching a filter (async).
+
+        Args:
+            operation_id: Target operation.
+            tags: Tags to remove.
+            ws_id: WebSocket ID.
+            flt: ``GulpQueryFilter`` dict.
+            req_id: Optional request ID.
+            wait: If True, wait for the async request to complete and return final status.
+            timeout: Max seconds to wait if ``wait`` is True (0 for no timeout).
+            ws_callback: Optional websocket callback.
+
+        Returns:
+            ``{"status": "pending", "req_id": ...}``.
+        """
+        params: dict[str, Any] = {
+            "operation_id": operation_id,
+            "ws_id": ws_id or self.client.ws_id,
+        }
+        if req_id is not None:
+            params["req_id"] = req_id
+        body: dict[str, Any] = {"tags": tags}
+        if flt:
+            body["flt"] = flt
+        response_data = await self.client._request(
+            "POST", "/untag_documents", json=body, params=params
+        )
+        if wait and isinstance(response_data, dict) and response_data.get("status") == "pending":
+            req = response_data.get("req_id")
+            if req:
+                return await wait_for_request_stats(self.client, str(req), timeout, ws_callback=ws_callback)
+
+        return response_data
+
+    
     async def enrich_remove(
         self,
         operation_id: str,
-        field: str,
         *,
+        fields: list[str] | None = None,
         ws_id: str | None = None,
         flt: dict[str, Any] | None = None,
         req_id: str | None = None,
     ) -> dict[str, Any]:
         """
-        Remove an enrichment field from documents matching a filter (async).
+        Remove the default enriched data marker (`gulp.enriched`) from documents matching a filter (async).
 
         Args:
             operation_id: Target operation.
-            field: Field name to remove.
+            fields: List of fields to remove: if not set, `gulp.enriched` is removed.
             ws_id: WebSocket ID.
             flt: ``GulpQueryFilter`` dict.
             req_id: Optional request ID.
@@ -331,12 +379,15 @@ class EnrichAPI:
         """
         params: dict[str, Any] = {
             "operation_id": operation_id,
-            "field": field,
             "ws_id": ws_id or self.client.ws_id,
         }
         if req_id is not None:
             params["req_id"] = req_id
+        body = {
+            "fields": fields or None,
+            "flt": flt or {},
+        }
         response_data = await self.client._request(
-            "POST", "/enrich_remove", json=flt or {}, params=params
+            "POST", "/enrich_remove", json=body, params=params
         )
         return response_data
