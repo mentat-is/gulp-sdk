@@ -225,6 +225,7 @@ See `docs/examples/` for complete working examples:
 - [collab_notes_links.py](docs/examples/collab_notes_links.py) — Collaboration notes and links workflow
 - [storage_list_files.py](docs/examples/storage_list_files.py) — List and delete storage files workflow
 - [query_external_elasticsearch.py](docs/examples/query_external_elasticsearch.py) — External query with query_elasticsearch plugin
+- [context_source_management.py](docs/examples/context_source_management.py) — Create and manage contexts and sources, complete incident setup
 
 For additional workflows, consult the integration tests in `tests/integration/` and the main `gulp` docs for plugin-specific ingestion and query patterns.
 
