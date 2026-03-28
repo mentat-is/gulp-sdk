@@ -246,6 +246,56 @@ class UsersAPI:
         )
         return response_data.get("data", 0)
 
+    async def session_list(
+        self,
+        *,
+        user_id: str | None = None,
+        req_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """
+        List user sessions.
+
+        Args:
+            user_id: Optional user filter. Non-admin users can only query themselves.
+            req_id: Optional request ID.
+
+        Returns:
+            List of session dicts.
+        """
+        params: dict[str, Any] = {}
+        if user_id is not None:
+            params["user_id"] = user_id
+        if req_id is not None:
+            params["req_id"] = req_id
+        response_data = await self.client._request(
+            "GET", "/user_session_list", params=params or None
+        )
+        return response_data.get("data", [])
+
+    async def session_delete(
+        self,
+        session_id: str,
+        *,
+        req_id: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Delete one user session.
+
+        Args:
+            session_id: Session ID / token ID to delete.
+            req_id: Optional request ID.
+
+        Returns:
+            ``{"id": session_id}`` on success.
+        """
+        params: dict[str, Any] = {"obj_id": session_id}
+        if req_id is not None:
+            params["req_id"] = req_id
+        response_data = await self.client._request(
+            "DELETE", "/user_session_delete", params=params
+        )
+        return response_data.get("data", {})
+
     async def set_data(
         self,
         key: str,
