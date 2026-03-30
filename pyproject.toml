@@ -2,15 +2,19 @@
 requires = ["setuptools>=68.0", "wheel", "setuptools_scm[toml]>=7.0"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools_scm]
+write_to = "src/muty/_version.py"
+version_scheme = "guess-next-dev"
+local_scheme = "node-and-date"
+
 [project]
 name = "gulp-sdk"
 dynamic = ["version"]
-description = "Python SDK for Gulp"
-readme = "README.md"
-license = {text = "MIT"}
 authors = [
     {name = "valerino", email = "valerino@mentat.is"}
 ]
+description = "Python SDK for Gulp"
+readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "httpx>=0.24.0",
@@ -36,11 +40,6 @@ docs = [
 [tool.setuptools]
 packages = ["gulp_sdk"]
 package-dir = {"" = "src"}
-
-[tool.setuptools_scm]
-write_to = "src/gulp_sdk/_version.py"
-version_scheme = "post-release"
-local_scheme = "node-and-date"
 
 [tool.pytest.ini_options]
 minversion = "7.0"
