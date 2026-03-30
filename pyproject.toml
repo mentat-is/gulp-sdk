@@ -3,7 +3,7 @@ requires = ["setuptools>=68.0", "wheel", "setuptools_scm[toml]>=7.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
-write_to = "src/muty/_version.py"
+write_to = "src/gulp_sdk/_version.py"
 version_scheme = "guess-next-dev"
 local_scheme = "node-and-date"
 
