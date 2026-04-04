@@ -22,4 +22,6 @@ build
 .specstory
 .coverage
 site
-src/gulp_sdk/_version.py
+_version.py
+dist
+

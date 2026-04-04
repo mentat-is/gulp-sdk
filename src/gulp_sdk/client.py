@@ -110,9 +110,9 @@ class GulpClient:
 
     def version(self) -> str:
         """Get current Gulp SDK version."""
-        from gulp_sdk._version import __version__
+        from gulp_sdk._version import __version__, __commit_id__
 
-        return __version__
+        return f"{__version__} ({__commit_id__})" if __commit_id__ else __version__
     
     async def ensure_websocket(self) -> GulpWebSocket:
         """
