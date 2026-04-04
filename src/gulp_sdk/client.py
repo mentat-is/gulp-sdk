@@ -389,10 +389,6 @@ class GulpClient:
         from gulp_sdk.api.ingest import IngestAPI
 
         return IngestAPI(self)
-        """Ingestion endpoints."""
-        from gulp_sdk.api.ingest import IngestAPI
-
-        return IngestAPI(self)
 
     @property
     def queries(self) -> "QueriesAPI":

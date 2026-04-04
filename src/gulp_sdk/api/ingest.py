@@ -373,6 +373,8 @@ class IngestAPI:
         source_id: str,
         file_path: str,
         *,
+        plugin_params: dict[str, Any] | None = None,
+        flt: dict[str, Any] | None = None,
         ws_id: str | None = None,
         req_id: str | None = None,
         wait: bool = False,
@@ -389,6 +391,8 @@ class IngestAPI:
         Args:
             source_id: Target source ID.
             file_path: Local path to the file to ingest.
+            plugin_params: Override plugin parameters (``GulpPluginParameters`` dict).
+            flt: ``GulpIngestionFilter`` dict.
             ws_id: WebSocket ID for progress notifications.
             req_id: Optional request ID.
             wait: If True, wait for async completion and return final request status.
@@ -401,8 +405,8 @@ class IngestAPI:
         file_bytes = file_path_obj.read_bytes()
 
         payload: dict[str, Any] = {
-            "flt": {},
-            "plugin_params": {},
+            "flt": flt or {},
+            "plugin_params": plugin_params or {},
             "original_file_path": str(file_path_obj),
         }
 
