@@ -108,6 +108,12 @@ class GulpClient:
         """Current websocket id used for API calls requiring websocket correlation."""
         return self._ws_id
 
+    def version(self) -> str:
+        """Get current Gulp SDK version."""
+        from gulp_sdk._version import __version__
+
+        return __version__
+    
     async def ensure_websocket(self) -> GulpWebSocket:
         """
         Ensure a default websocket is connected for the current authenticated token.
