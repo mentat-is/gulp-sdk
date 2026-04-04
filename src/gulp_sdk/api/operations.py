@@ -115,12 +115,14 @@ class OperationsAPI:
         op_data = response_data.get("data", {})
         return Operation.model_validate(op_data)
 
-    async def delete(self, operation_id: str) -> bool:
+    async def delete(self, operation_id: str, ws_id: str | None = None, force: bool = False) -> bool:
         """
         Delete an operation.
 
         Args:
             operation_id: Operation ID
+            ws_id: WebSocket ID for progress notifications (optional)
+            force: Force deletion even with ongoing requests (default: False)
 
         Returns:
             True if successful
@@ -128,7 +130,7 @@ class OperationsAPI:
         await self.client._request(
             "DELETE",
             "/operation_delete",
-            params={"operation_id": operation_id},
+            params={"operation_id": operation_id, "ws_id": ws_id, "force_delete": force},
         )
         return True
 

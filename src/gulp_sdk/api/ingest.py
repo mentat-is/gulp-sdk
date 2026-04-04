@@ -21,9 +21,6 @@ class IngestResult(BaseModel):
 
     req_id: str
     status: str
-    documents_created: int = 0
-    errors: int = 0
-
 
 class IngestAPI:
     """Ingestion endpoints."""
