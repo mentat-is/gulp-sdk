@@ -422,8 +422,8 @@ class PluginsAPI:
 
     async def enhance_map_create(
         self,
-        gulp_event_code: int,
         plugin: str,
+        match_criteria: dict[str, Any],
         *,
         glyph_id: str | None = None,
         color: str | None = None,
@@ -432,13 +432,33 @@ class PluginsAPI:
         """
         Create an enhance-document-map entry.
 
-        Maps a ``gulp.event_code`` within a plugin to a ``glyph_id`` and/or
+        Maps a set of key-value criteria on a ``GulpDocument`` (all must
+        match, AND semantics) within a plugin to a ``glyph_id`` and/or
         ``color`` for enhanced UI visualization.
 
         Args:
-            gulp_event_code: The event code to enhance.
-            plugin: Plugin name the event-code belongs to (filename without
+            plugin: Plugin name the entry applies to (filename without
                 extension).
+            match_criteria: Dict mapping ``GulpDocument`` field names to
+                criteria values. Each value can be:
+
+                - A simple value (string, number, boolean) for exact match
+                - A dict with comparison operators for numeric matching:
+                  - ``"eq"``: exact equality
+                  - ``"gte"``: greater than or equal
+                  - ``"lte"``: less than or equal
+                  - Operators can be combined (e.g., ``{"gte": 100, "lte": 200}``)
+
+                Example:
+
+                .. code-block:: python
+
+                    {
+                        "gulp.event_code": {"eq": 4624},
+                        "status": "active",
+                        "severity_level": {"gte": 5, "lte": 10},
+                    }
+
             glyph_id: Optional glyph to assign.
             color: Optional CSS hex color string (e.g. ``"#ff0000"``).
             req_id: Optional request ID.
@@ -446,10 +466,7 @@ class PluginsAPI:
         Returns:
             Created enhance-document-map entry dict.
         """
-        params: dict[str, Any] = {
-            "gulp_event_code": gulp_event_code,
-            "plugin": plugin,
-        }
+        params: dict[str, Any] = {"plugin": plugin}
         if glyph_id is not None:
             params["glyph_id"] = glyph_id
         if color is not None:
@@ -458,7 +475,7 @@ class PluginsAPI:
             params["req_id"] = req_id
         return (
             await self.client._request(
-                "POST", "/enhance_document_map_create", params=params
+                "POST", "/enhance_document_map_create", params=params, json=match_criteria
             )
         ).get("data", {})
 
@@ -555,8 +572,8 @@ class PluginsAPI:
         List enhance-document-map entries, optionally filtered.
 
         Args:
-            flt: Optional ``GulpCollabFilter``-compatible dict.  Use
-                ``gulp_event_code`` (as string) and/or ``plugin`` keys.
+            flt: Optional ``GulpCollabFilter``-compatible dict.  Use ``plugin``
+                key to filter by plugin name.
             req_id: Optional request ID.
 
         Returns:

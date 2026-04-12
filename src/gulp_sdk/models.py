@@ -220,13 +220,21 @@ class MappingFile(BaseModel):
 
 
 class EnhanceDocumentMap(BaseModel):
-    """Enhance document mapping entry."""
+    """Enhance document mapping entry.
+    
+    Maps a set of criteria on a GulpDocument to a visual enhancement (color/glyph)
+    for a specific plugin. Criteria values can be simple values (for exact match)
+    or dicts with comparison operators ('eq', 'gte', 'lte') for numeric ranges.
+    """
 
     model_config = ConfigDict(extra="allow")
 
     id: str = Field(..., description="Mapping ID")
     operation_id: str | None = Field(default=None, description="Related operation ID")
-    plugin: str | None = Field(default=None, description="Plugin name")
+    plugin: str = Field(..., description="Plugin name")
+    match_criteria: dict[str, Any] = Field(default_factory=dict, description="Dict mapping document field names to criteria values. Values can be simple values or operator dicts.")
+    color: str | None = Field(default=None, description="CSS hex color (e.g. #ff0000)")
+    glyph_id: str | None = Field(default=None, description="Glyph ID to apply")
 
 
 class Link(BaseModel):
