@@ -110,6 +110,43 @@ class QueriesAPI:
 
         return response_data
 
+    async def query_raw_paginate(
+        self,
+        operation_id: str,
+        q: dict,
+        q_options: dict[str, Any],
+        *,
+        req_id: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Query Gulp using raw OpenSearch DSL with simple pagination support.
+
+        Runs a single query and returns paginated results directly.
+
+        Args:
+            operation_id: Target operation.
+            q: OpenSearch DSL query dict.
+            q_options: ``GulpQueryParameters`` dict — must include `limit` and `offset`.
+            req_id: Optional request ID.
+
+        Returns:
+            ``{"total_hits": n, "docs": [...]}``.
+        """
+        params: dict[str, Any] = {"operation_id": operation_id}
+        if req_id is not None:
+            params["req_id"] = req_id
+
+        params: dict[str, Any] = {
+            "operation_id": operation_id,
+        }
+        if req_id is not None:
+            params["req_id"] = req_id
+        body: dict[str, Any] = {"q": q, "q_options": q_options}
+        response_data = await self.client._request(
+            "POST", "/query_raw_paginate", json=body, params=params
+        )
+        return response_data.get("data", {})
+
     async def query_gulp(
         self,
         operation_id: str,

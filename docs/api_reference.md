@@ -42,6 +42,8 @@ This page maps the main `gulp-sdk` API groups to the corresponding methods. All 
 ## Queries (`client.queries`)
 
 - `query_raw(operation_id, q, ws_id, q_options, req_id)`
+- `query_raw_paginate(operation_id, q, limit, offset, q_options, req_id)`
+- `query_single_id(operation_id, doc_id, req_id)`
 - `query_gulp(operation_id, ws_id, flt, q_options, req_id)`
 - `query_external(operation_id, q, plugin, plugin_params, ws_id, q_options, req_id)`
 - `query_sigma(...)`
