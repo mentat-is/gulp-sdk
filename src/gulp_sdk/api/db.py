@@ -50,7 +50,7 @@ class DbAPI:
         offset_msec: int,
         *,
         flt: dict[str, Any] | None = None,
-        script: str | None = None,
+        fields: list[str] | None = None,
         req_id: str | None = None,
         wait: bool = False,
         timeout: int = 120,
@@ -72,8 +72,10 @@ class DbAPI:
                 subtract).
             flt: ``GulpQueryFilter`` dict to restrict which documents are
                 rebased.
-            script: Optional custom Painless script to run instead of the
-                default rebase script.
+                fields: Optional list of extra fields to rebase other than `@timestamp` and `gulp.timestamp`.
+                        - they must be of `date`, `integer` or `long` type.
+                        - integer/long values are treated as epoch timestamps and the the conversion code heuristically infers seconds, milliseconds, microseconds, or nanoseconds before applying the offset.
+                        - if not provided, only `@timestamp` and `gulp.timestamp` are rebased.
             req_id: Optional request ID.
 
         Returns:
@@ -84,14 +86,20 @@ class DbAPI:
             "ws_id": ws_id or self.client.ws_id,
             "offset_msec": offset_msec,
         }
+        
+        body: dict[str, Any] = {}
+        if flt is not None:
+            body["flt"] = flt
+        if fields is not None:
+            body["fields"] = fields
+
         if req_id is not None:
             params["req_id"] = req_id
         response_data = await self.client._request(
             "POST",
             "/opensearch_rebase_by_query",
-            json=flt or {},
+            json=body or None,
             params=params,
-            data=script,
         )
 
         if (
