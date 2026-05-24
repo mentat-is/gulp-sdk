@@ -15,7 +15,7 @@ from enum import Enum
 import contextlib
 
 import websockets
-from websockets.client import WebSocketClientProtocol
+from websockets.asyncio.client import ClientConnection
 
 from gulp_sdk.exceptions import NetworkError, AuthenticationError
 
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 def _build_invalid_status_errors() -> tuple[type[BaseException], ...]:
     """Return websocket invalid-status exception classes available in this version."""
     classes: list[type[BaseException]] = []
-    for name in ("InvalidStatusException", "InvalidStatusCode", "InvalidStatus"):
+    for name in ("InvalidStatusException", "InvalidStatus"):
         exc = getattr(websockets.exceptions, name, None)
         if isinstance(exc, type) and issubclass(exc, BaseException):
             classes.append(exc)
@@ -129,7 +129,7 @@ class GulpWebSocket:
         self.ws_id = ws_id
 
         # Connection state
-        self._ws: WebSocketClientProtocol | None = None
+        self._ws: ClientConnection | None = None
         self._connected = False
         self._receive_task: asyncio.Task[None] | None = None
         self._connect_lock = asyncio.Lock()
@@ -242,9 +242,7 @@ class GulpWebSocket:
         self._logger.debug(f"Unsubscribed: req_id={req_id}")
         self._forget_server_subscription(req_id)
 
-    def on_message(
-        self, message_type: WSMessageType, callback: Callable[[WSMessage], Any]
-    ) -> None:
+    def on_message(self, message_type: WSMessageType, callback: Callable[[WSMessage], Any]) -> None:
         """
         Register callback for specific message type.
 
@@ -360,9 +358,7 @@ class GulpWebSocket:
 
             ack_message = WSMessage.from_json(ack_data)
             if ack_message.type == WSMessageType.ERROR.value:
-                raise AuthenticationError(
-                    f"WebSocket auth failed: {ack_message.data or ack_data}"
-                )
+                raise AuthenticationError(f"WebSocket auth failed: {ack_message.data or ack_data}")
             if ack_message.type != WSMessageType.CONNECTED.value:
                 raise AuthenticationError(
                     f"Unexpected WebSocket handshake message: {ack_message.type}"
@@ -387,7 +383,7 @@ class GulpWebSocket:
                 raise NetworkError(f"WebSocket connection failed: {e}") from e
             raise
 
-    async def _connect_transport(self) -> WebSocketClientProtocol:
+    async def _connect_transport(self) -> ClientConnection:
         connect_kwargs = {
             # Under heavy load, keepalive should not close the socket only
             # because a pong is delayed.
