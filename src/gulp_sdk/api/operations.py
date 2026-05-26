@@ -4,12 +4,17 @@ Operations API — create, read, update, delete operations.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, AsyncIterator
+from typing import TYPE_CHECKING, Any, AsyncIterator, Protocol
 
-from gulp.structs import GulpPluginParameters
 from gulp_sdk.models import Operation
+
 if TYPE_CHECKING:
+    from gulp.structs import GulpPluginParameters
     from gulp_sdk.client import GulpClient
+else:
+
+    class GulpPluginParameters(Protocol):
+        def model_dump(self, *, exclude_none: bool = False) -> dict[str, Any]: ...
 
 
 class OperationsAPI:
@@ -67,6 +72,7 @@ class OperationsAPI:
         Yields:
             Operation objects
         """
+
         async def _iter() -> AsyncIterator[Operation]:
             # Current backend returns the full operation list in one call.
             response_data = await self.client._request("POST", "/operation_list")
@@ -115,7 +121,9 @@ class OperationsAPI:
         op_data = response_data.get("data", {})
         return Operation.model_validate(op_data)
 
-    async def delete(self, operation_id: str, ws_id: str | None = None, force: bool = False) -> bool:
+    async def delete(
+        self, operation_id: str, ws_id: str | None = None, force: bool = False
+    ) -> bool:
         """
         Delete an operation.
 
@@ -163,8 +171,6 @@ class OperationsAPI:
         Returns:
             Context dict with at least ``id`` and ``name`` keys.
         """
-        from typing import Any
-
         params: dict[str, Any] = {
             "operation_id": operation_id,
             "context_name": context_name,
@@ -176,9 +182,7 @@ class OperationsAPI:
             params["glyph_id"] = glyph_id
         if req_id is not None:
             params["req_id"] = req_id
-        response_data = await self.client._request(
-            "POST", "/context_create", params=params
-        )
+        response_data = await self.client._request("POST", "/context_create", params=params)
         return response_data.get("data", {})
 
     async def source_create(
@@ -188,7 +192,7 @@ class OperationsAPI:
         source_name: str,
         *,
         plugin: str | None = None,
-        plugin_params: GulpPluginParameters | None = None,
+        plugin_params: GulpPluginParameters | dict[str, Any] | None = None,
         color: str | None = None,
         glyph_id: str | None = None,
         fail_if_exists: bool = False,
@@ -208,7 +212,7 @@ class OperationsAPI:
             source_name: Name of the source to create.
             plugin: Optional plugin name.
             plugin_params: Optional plugin parameters.
-            color: Optional CSS hex color.            
+            color: Optional CSS hex color.
             glyph_id: Optional glyph ID.
             fail_if_exists: Raise an error if the source already exists.
             req_id: Optional request ID.
@@ -216,8 +220,6 @@ class OperationsAPI:
         Returns:
             Source dict with at least ``id`` and ``name`` keys.
         """
-        from typing import Any
-
         params: dict[str, Any] = {
             "operation_id": operation_id,
             "context_id": context_id,
@@ -231,7 +233,14 @@ class OperationsAPI:
             params["glyph_id"] = glyph_id
         if req_id is not None:
             params["req_id"] = req_id
-        body = plugin_params.model_dump(exclude_none=True) if plugin_params else None
+        if plugin_params is None:
+            body = None
+        elif isinstance(plugin_params, dict):
+            body = plugin_params
+        elif hasattr(plugin_params, "model_dump"):
+            body = plugin_params.model_dump(exclude_none=True)
+        else:
+            raise TypeError("plugin_params must be a dict or expose model_dump()")
         response_data = await self.client._request(
             "POST", "/source_create", params=params, json=body
         )
@@ -296,9 +305,7 @@ class OperationsAPI:
         params: dict[str, Any] = {"operation_id": operation_id}
         if req_id is not None:
             params["req_id"] = req_id
-        response_data = await self.client._request(
-            "GET", "/context_list", params=params
-        )
+        response_data = await self.client._request("GET", "/context_list", params=params)
         return response_data.get("data", [])
 
     async def context_get(
@@ -322,9 +329,7 @@ class OperationsAPI:
         params: dict[str, Any] = {"obj_id": obj_id}
         if req_id is not None:
             params["req_id"] = req_id
-        response_data = await self.client._request(
-            "GET", "/context_get_by_id", params=params
-        )
+        response_data = await self.client._request("GET", "/context_get_by_id", params=params)
         return response_data.get("data", {})
 
     async def context_delete(
@@ -359,9 +364,7 @@ class OperationsAPI:
         }
         if req_id is not None:
             params["req_id"] = req_id
-        response_data = await self.client._request(
-            "DELETE", "/context_delete", params=params
-        )
+        response_data = await self.client._request("DELETE", "/context_delete", params=params)
         return response_data.get("data", {})
 
     async def context_update(
@@ -405,9 +408,7 @@ class OperationsAPI:
             params["glyph_id"] = glyph_id
         if req_id is not None:
             params["req_id"] = req_id
-        response_data = await self.client._request(
-            "PATCH", "/context_update", params=params
-        )
+        response_data = await self.client._request("PATCH", "/context_update", params=params)
         return response_data.get("data", {})
 
     # ------------------------------------------------------------------ #
@@ -440,9 +441,7 @@ class OperationsAPI:
         }
         if req_id is not None:
             params["req_id"] = req_id
-        response_data = await self.client._request(
-            "GET", "/source_list", params=params
-        )
+        response_data = await self.client._request("GET", "/source_list", params=params)
         return response_data.get("data", [])
 
     async def source_get(
@@ -466,9 +465,7 @@ class OperationsAPI:
         params: dict[str, Any] = {"obj_id": obj_id}
         if req_id is not None:
             params["req_id"] = req_id
-        response_data = await self.client._request(
-            "GET", "/source_get_by_id", params=params
-        )
+        response_data = await self.client._request("GET", "/source_get_by_id", params=params)
         return response_data.get("data", {})
 
     async def source_update(
@@ -512,9 +509,7 @@ class OperationsAPI:
             params["glyph_id"] = glyph_id
         if req_id is not None:
             params["req_id"] = req_id
-        response_data = await self.client._request(
-            "PATCH", "/source_update", params=params
-        )
+        response_data = await self.client._request("PATCH", "/source_update", params=params)
         return response_data.get("data", {})
 
     async def source_delete(
@@ -549,8 +544,5 @@ class OperationsAPI:
         }
         if req_id is not None:
             params["req_id"] = req_id
-        response_data = await self.client._request(
-            "DELETE", "/source_delete", params=params
-        )
+        response_data = await self.client._request("DELETE", "/source_delete", params=params)
         return response_data.get("data", {})
-
