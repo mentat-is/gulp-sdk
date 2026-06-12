@@ -48,8 +48,8 @@ class EnrichAPI:
         self,
         operation_id: str,
         plugin: str,
-        fields: dict[str, Any],
         *,
+        fields: dict[str, Any] | None = None,
         ws_id: str | None = None,
         flt: dict[str, Any] | None = None,
         plugin_params: dict[str, Any] | None = None,
@@ -64,7 +64,7 @@ class EnrichAPI:
         Args:
             operation_id: Target operation.
             plugin: Enrichment plugin name.
-            fields: Fields to set/update on matching documents.
+            fields: Fields to set/update on matching documents, may be None for plugins that don't require additional fields (i.e. they work on specific hardcoded fields).
             ws_id: WebSocket ID.
             flt: ``GulpQueryFilter`` dict to select documents.
             plugin_params: ``GulpPluginParameters`` dict.
@@ -80,7 +80,9 @@ class EnrichAPI:
         }
         if req_id is not None:
             params["req_id"] = req_id
-        body: dict[str, Any] = {"fields": fields}
+        body: dict[str, Any] = {}
+        if fields:
+            body["fields"] = fields
         if flt:
             body["flt"] = flt
         if plugin_params:
@@ -106,8 +108,8 @@ class EnrichAPI:
         operation_id: str,
         doc_id: str,
         plugin: str,
-        fields: dict[str, Any],
         *,
+        fields: dict[str, Any] | None = None,
         ws_id: str | None = None,
         plugin_params: dict[str, Any] | None = None,
         req_id: str | None = None,
@@ -119,7 +121,7 @@ class EnrichAPI:
             operation_id: Target operation.
             doc_id: Document ``_id``.
             plugin: Enrichment plugin name.
-            fields: Fields to set/update.
+            fields: Fields to set/update (may be None for plugins that operate on specific hardcoded fields).
             ws_id: WebSocket ID.
             plugin_params: ``GulpPluginParameters`` dict.
             req_id: Optional request ID.
@@ -135,7 +137,9 @@ class EnrichAPI:
         }
         if req_id is not None:
             params["req_id"] = req_id
-        body: dict[str, Any] = {"fields": fields}
+        body: dict[str, Any] = {}
+        if fields:
+            body["fields"] = fields
         if plugin_params:
             body["plugin_params"] = plugin_params
         response_data = await self.client._request(
@@ -187,7 +191,9 @@ class EnrichAPI:
         if wait and isinstance(response_data, dict) and response_data.get("status") == "pending":
             req = response_data.get("req_id")
             if req:
-                return await wait_for_request_stats(self.client, str(req), timeout, ws_callback=ws_callback)
+                return await wait_for_request_stats(
+                    self.client, str(req), timeout, ws_callback=ws_callback
+                )
 
         return response_data
 
@@ -269,7 +275,9 @@ class EnrichAPI:
         if wait and isinstance(response_data, dict) and response_data.get("status") == "pending":
             req = response_data.get("req_id")
             if req:
-                return await wait_for_request_stats(self.client, str(req), timeout, ws_callback=ws_callback)
+                return await wait_for_request_stats(
+                    self.client, str(req), timeout, ws_callback=ws_callback
+                )
 
         return response_data
 
@@ -350,11 +358,12 @@ class EnrichAPI:
         if wait and isinstance(response_data, dict) and response_data.get("status") == "pending":
             req = response_data.get("req_id")
             if req:
-                return await wait_for_request_stats(self.client, str(req), timeout, ws_callback=ws_callback)
+                return await wait_for_request_stats(
+                    self.client, str(req), timeout, ws_callback=ws_callback
+                )
 
         return response_data
 
-    
     async def enrich_remove(
         self,
         operation_id: str,
