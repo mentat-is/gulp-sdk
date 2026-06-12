@@ -372,6 +372,9 @@ class EnrichAPI:
         ws_id: str | None = None,
         flt: dict[str, Any] | None = None,
         req_id: str | None = None,
+        wait: bool = False,
+        timeout: int = 120,
+        ws_callback: "Callable[[WSMessage], None] | None" = None,
     ) -> dict[str, Any]:
         """
         Remove the default enriched data marker (`gulp.enriched`) from documents matching a filter (async).
@@ -382,6 +385,9 @@ class EnrichAPI:
             ws_id: WebSocket ID.
             flt: ``GulpQueryFilter`` dict.
             req_id: Optional request ID.
+            wait: If True, wait for the async request to complete and return final status.
+            timeout: Max seconds to wait if ``wait`` is True (0 for no timeout).
+            ws_callback: Optional websocket callback.
 
         Returns:
             ``{"status": "pending", "req_id": ...}``.
@@ -399,4 +405,10 @@ class EnrichAPI:
         response_data = await self.client._request(
             "POST", "/enrich_remove", json=body, params=params
         )
+        if wait and isinstance(response_data, dict) and response_data.get("status") == "pending":
+            req = response_data.get("req_id")
+            if req:
+                return await wait_for_request_stats(
+                    self.client, str(req), timeout, ws_callback=ws_callback
+                )
         return response_data
