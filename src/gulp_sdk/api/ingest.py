@@ -5,9 +5,11 @@ Ingestion API — file/raw/zip ingestion, preview, status.
 from typing import TYPE_CHECKING, Any, Callable
 from pathlib import Path
 import json
+import uuid
 from pydantic import BaseModel, ConfigDict
 
 from gulp_sdk.api.request_utils import wait_for_request_stats
+from gulp_sdk.exceptions import GulpSDKError
 
 if TYPE_CHECKING:
     from gulp_sdk.client import GulpClient
@@ -38,6 +40,59 @@ class IngestAPI:
             return data.encode("utf-8")
         return json.dumps(data).encode("utf-8")
 
+    async def _upload_multipart_file(
+        self,
+        path: str,
+        file_path: Path,
+        payload: dict[str, Any],
+        params: dict[str, Any],
+        content_type: str,
+    ) -> dict[str, Any]:
+        """Upload a file using the backend resume protocol."""
+        total_size = file_path.stat().st_size
+        continue_offset = 0
+        request_params = dict(params)
+        request_params.setdefault("req_id", str(uuid.uuid4()))
+
+        while True:
+            with file_path.open("rb") as f:
+                f.seek(continue_offset)
+                file_bytes = f.read()
+
+            response_data = await self.client._request(
+                "POST",
+                path,
+                files=[
+                    ("payload", ("payload.json", json.dumps(payload), "application/json")),
+                    ("f", (file_path.name, file_bytes, content_type)),
+                ],
+                headers={
+                    "size": str(total_size),
+                    "continue_offset": str(continue_offset),
+                },
+                params=request_params,
+            )
+
+            data = response_data.get("data", {})
+            if not isinstance(data, dict) or data.get("done") is not False:
+                return response_data
+
+            try:
+                next_offset = int(data["continue_offset"])
+            except (KeyError, TypeError, ValueError) as ex:
+                raise GulpSDKError(
+                    f"Invalid upload resume response: {response_data}"
+                ) from ex
+
+            if next_offset <= continue_offset or next_offset > total_size:
+                raise GulpSDKError(
+                    f"Invalid upload resume offset {next_offset} for file size {total_size}"
+                )
+
+            continue_offset = next_offset
+            if response_data.get("req_id"):
+                request_params["req_id"] = response_data["req_id"]
+
     async def file(
         self,
         operation_id: str,
@@ -65,7 +120,6 @@ class IngestAPI:
             IngestResult with req_id for status tracking
         """
         file_path_obj = Path(file_path)
-        file_bytes = file_path_obj.read_bytes()
 
         payload: dict[str, Any] = {
             "flt": {},
@@ -74,31 +128,21 @@ class IngestAPI:
         }
         if params:
             payload.update(params)
+        request_params = {
+            "operation_id": operation_id,
+            "context_name": context_name,
+            "plugin": plugin_name,
+            "ws_id": ws_id or self.client.ws_id,
+        }
+        if "req_id" in payload:
+            request_params["req_id"] = payload.pop("req_id")
 
-        files = [
-            (
-                "payload",
-                ("payload.json", json.dumps(payload), "application/json"),
-            ),
-            (
-                "f",
-                (file_path_obj.name, file_bytes, "application/octet-stream"),
-            ),
-        ]
-
-        response_data = await self.client._request(
-            "POST",
+        response_data = await self._upload_multipart_file(
             "/ingest_file",
-            files=files,
-            headers={
-                "size": str(len(file_bytes)),
-            },
-            params={
-                "operation_id": operation_id,
-                "context_name": context_name,
-                "plugin": plugin_name,
-                "ws_id": ws_id or self.client.ws_id,
-            },
+            file_path_obj,
+            payload,
+            request_params,
+            "application/octet-stream",
         )
 
         result_data = response_data.get("data", {})
@@ -229,30 +273,28 @@ class IngestAPI:
             IngestResult with req_id for status tracking
         """
         zip_path_obj = Path(zipfile_path)
-        zip_bytes = zip_path_obj.read_bytes()
 
         # ingest_zip uses the same multipart chunked upload pattern as ingest_file.
         payload: dict[str, Any] = {"flt": {}}
         if params:
             payload.update(params)
 
-        files = [
-            ("payload", ("payload.json", json.dumps(payload), "application/json")),
-            ("f", (zip_path_obj.name, zip_bytes, "application/zip")),
-        ]
-
         # NOTE: plugin_name is kept for backward compatibility with SDK callers,
         # but the /ingest_zip endpoint resolves plugins from metadata.json in the zip.
-        response_data = await self.client._request(
-            "POST",
+        request_params = {
+            "operation_id": operation_id,
+            "context_name": "sdk_context",
+            "ws_id": self.client.ws_id,
+        }
+        if "req_id" in payload:
+            request_params["req_id"] = payload.pop("req_id")
+
+        response_data = await self._upload_multipart_file(
             "/ingest_zip",
-            files=files,
-            headers={"size": str(len(zip_bytes))},
-            params={
-                "operation_id": operation_id,
-                "context_name": "sdk_context",
-                "ws_id": self.client.ws_id,
-            },
+            zip_path_obj,
+            payload,
+            request_params,
+            "application/zip",
         )
 
         result_data = response_data.get("data", {})
@@ -296,7 +338,6 @@ class IngestAPI:
             Preview data (sample documents, errors, etc.)
         """
         file_path_obj = Path(file_path)
-        file_bytes = file_path_obj.read_bytes()
 
         request_params: dict[str, Any] = {
             "operation_id": operation_id,
@@ -324,20 +365,12 @@ class IngestAPI:
                 plugin_params["preview_mode"] = True
                 payload["plugin_params"] = plugin_params
 
-        files = [
-            ("payload", ("payload.json", json.dumps(payload), "application/json")),
-            ("f", (file_path_obj.name, file_bytes, "application/octet-stream")),
-        ]
-
-        response_data = await self.client._request(
-            "POST",
+        response_data = await self._upload_multipart_file(
             "/ingest_file",
-            files=files,
-            headers={
-                "size": str(len(file_bytes)),
-                "continue_offset": "0",
-            },
-            params=request_params,
+            file_path_obj,
+            payload,
+            request_params,
+            "application/octet-stream",
         )
 
         return response_data.get("data", {})
@@ -399,18 +432,12 @@ class IngestAPI:
             ``IngestResult`` with ``req_id`` for tracking.
         """
         file_path_obj = Path(file_path)
-        file_bytes = file_path_obj.read_bytes()
 
         payload: dict[str, Any] = {
             "flt": flt or {},
             "plugin_params": plugin_params or {},
             "original_file_path": str(file_path_obj),
         }
-
-        files = [
-            ("payload", ("payload.json", json.dumps(payload), "application/json")),
-            ("f", (file_path_obj.name, file_bytes, "application/octet-stream")),
-        ]
 
         params: dict[str, Any] = {
             "source_id": source_id,
@@ -419,12 +446,12 @@ class IngestAPI:
         if req_id is not None:
             params["req_id"] = req_id
 
-        response_data = await self.client._request(
-            "POST",
+        response_data = await self._upload_multipart_file(
             "/ingest_file_to_source",
-            files=files,
-            headers={"size": str(len(file_bytes))},
-            params=params,
+            file_path_obj,
+            payload,
+            params,
+            "application/octet-stream",
         )
         result = IngestResult.model_validate(
             {
@@ -687,4 +714,3 @@ class IngestAPI:
             "GET", "/ingest_local_list", params=params or None
         )
         return response_data.get("data", [])
-

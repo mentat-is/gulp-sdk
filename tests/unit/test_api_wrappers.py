@@ -169,6 +169,44 @@ async def test_ingest_file_raw_zip_and_status(dummy_client, tmp_path: Path):
 
 
 @pytest.mark.unit
+async def test_ingest_file_resumes_after_partial_upload_response(
+    dummy_client, tmp_path: Path
+):
+    from gulp_sdk.api.ingest import IngestAPI
+
+    api = IngestAPI(dummy_client)
+    sample_file = tmp_path / "sample.evtx"
+    sample_file.write_bytes(b"abcdef")
+
+    dummy_client._request.side_effect = [
+        {
+            "status": "success",
+            "req_id": "resume-req",
+            "data": {"done": False, "continue_offset": 3},
+        },
+        {"status": "pending", "req_id": "resume-req", "data": {}},
+    ]
+
+    result = await api.file(
+        operation_id="op1",
+        plugin_name="win_evtx",
+        file_path=str(sample_file),
+        context_name="ctx1",
+    )
+
+    assert result.req_id == "resume-req"
+    assert dummy_client._request.await_count == 2
+
+    first_call = dummy_client._request.await_args_list[0]
+    second_call = dummy_client._request.await_args_list[1]
+    assert first_call.kwargs["headers"]["continue_offset"] == "0"
+    assert first_call.kwargs["files"][1][1][1] == b"abcdef"
+    assert second_call.kwargs["headers"]["continue_offset"] == "3"
+    assert second_call.kwargs["params"]["req_id"] == "resume-req"
+    assert second_call.kwargs["files"][1][1][1] == b"def"
+
+
+@pytest.mark.unit
 async def test_ingest_local_variants(dummy_client):
     from gulp_sdk.api.ingest import IngestAPI
 
