@@ -108,11 +108,21 @@ class GulpClient:
         """Current websocket id used for API calls requiring websocket correlation."""
         return self._ws_id
 
-    def version(self) -> str:
+    def sdk_version(self) -> str:
         """Get current Gulp SDK version."""
         from gulp_sdk._version import __version__, __commit_id__
 
         return f"{__version__} ({__commit_id__})" if __commit_id__ else __version__
+
+    async def version(self, *, req_id: str | None = None) -> str:
+        """Get the gULP server version."""
+        if not self.token:
+            from gulp_sdk.exceptions import AuthenticationError
+
+            raise AuthenticationError(
+                "Gulp server version requires an authentication token"
+            )
+        return await self.plugins.version(req_id=req_id)
     
     async def ensure_websocket(self) -> GulpWebSocket:
         """

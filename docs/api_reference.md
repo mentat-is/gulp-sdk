@@ -10,6 +10,10 @@ This page maps the main `gulp-sdk` API groups to the corresponding methods. All 
 - WebSocket:
   - `async with client.websocket() as ws:`
   - `await client.ensure_websocket()`
+- SDK build version:
+  - `client.sdk_version()`
+- Server version API:
+  - `await client.version()` (authenticated)
 
 ## Authentication (`client.auth`)
 
@@ -57,6 +61,7 @@ This page maps the main `gulp-sdk` API groups to the corresponding methods. All 
 
 ## Plugins (`client.plugins`)
 
+- `version(req_id=None)` - server `/version` endpoint
 - `request_get`, `request_delete`, `request_list` (equivalent to plugin request tracking)
 - plugin-specific utilities through server plugin endpoints
 

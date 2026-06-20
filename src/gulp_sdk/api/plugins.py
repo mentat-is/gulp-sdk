@@ -28,6 +28,9 @@ from __future__ import annotations
 
 import inspect
 from typing import TYPE_CHECKING, Any, Literal
+
+from gulp_sdk.exceptions import AuthenticationError
+
 if TYPE_CHECKING:
     from gulp_sdk.client import GulpClient
 
@@ -293,6 +296,8 @@ class PluginsAPI:
         Returns:
             Version string, e.g. ``"gulp v0.0.9 (muty v0.2)"``.
         """
+        if not self.client.token:
+            raise AuthenticationError("Gulp server version requires an authentication token")
         params: dict[str, Any] = {}
         if req_id is not None:
             params["req_id"] = req_id
@@ -732,4 +737,3 @@ class PluginsAPI:
         with open(output_path, "wb") as f:
             f.write(resp.content)
         return output_path
-

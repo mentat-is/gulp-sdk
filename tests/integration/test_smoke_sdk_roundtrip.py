@@ -22,7 +22,7 @@ async def test_smoke_sdk_roundtrip():
 
     async with GulpClient(base_url) as client:
         # Login (skip if not available)
-        print("using SDK version:", client.version())
+        print("using SDK version:", client.sdk_version())
         try:
             await client.auth.login("admin", "admin")
         except Exception as exc:
