@@ -986,8 +986,23 @@ async def test_ingest_preview_and_file_to_source(dummy_client, tmp_path: Path):
     assert call.kwargs["files"][1][0] == "f"
 
     dummy_client._request.return_value = {"status": "pending", "req_id": "r9", "data": {}}
-    out = await api.file_to_source("src1", str(f))
+    out = await api.file_to_source(
+        "src1",
+        str(f),
+        plugin="json",
+        plugin_params={"custom_parameters": {"k": "v"}},
+    )
     assert out.req_id == "r9"
+    call = dummy_client._request.await_args_list[-1]
+    assert call.args[1] == "/ingest_file_to_source"
+    assert call.kwargs["params"]["plugin"] == "json"
+    assert call.kwargs["files"][0][0] == "payload"
+    assert '"custom_parameters": {"k": "v"}' in call.kwargs["files"][0][1][1]
+
+    with pytest.raises(
+        ValueError, match="plugin_params must be supplied when overriding plugin"
+    ):
+        await api.file_to_source("src1", str(f), plugin="json")
 
 
 @pytest.mark.unit

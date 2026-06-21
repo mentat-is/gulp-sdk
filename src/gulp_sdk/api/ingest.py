@@ -403,6 +403,7 @@ class IngestAPI:
         source_id: str,
         file_path: str,
         *,
+        plugin: str | None = None,
         plugin_params: dict[str, Any] | None = None,
         flt: dict[str, Any] | None = None,
         ws_id: str | None = None,
@@ -415,13 +416,13 @@ class IngestAPI:
         Ingest a file into an existing source.
 
         The operation is derived from the source itself.  If the source has
-        associated plugin parameters, they are used unless overridden via
-        ``payload``.
+        associated plugin and plugin parameters, they are used unless overridden.
 
         Args:
             source_id: Target source ID.
             file_path: Local path to the file to ingest.
-            plugin_params: Override plugin parameters (``GulpPluginParameters`` dict).
+            plugin: Override source plugin.
+            plugin_params: Override plugin parameters (``GulpPluginParameters`` dict). Required when ``plugin`` is set; ``{}`` is allowed.
             flt: ``GulpIngestionFilter`` dict.
             ws_id: WebSocket ID for progress notifications.
             req_id: Optional request ID.
@@ -431,6 +432,9 @@ class IngestAPI:
         Returns:
             ``IngestResult`` with ``req_id`` for tracking.
         """
+        if plugin is not None and plugin_params is None:
+            raise ValueError("plugin_params must be supplied when overriding plugin")
+
         file_path_obj = Path(file_path)
 
         payload: dict[str, Any] = {
@@ -443,6 +447,8 @@ class IngestAPI:
             "source_id": source_id,
             "ws_id": ws_id or self.client.ws_id,
         }
+        if plugin is not None:
+            params["plugin"] = plugin
         if req_id is not None:
             params["req_id"] = req_id
 
