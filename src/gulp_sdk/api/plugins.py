@@ -1,8 +1,8 @@
 """
-Plugins and utility API — plugin management, mapping files, request stats.
+Plugins and utility API — plugin listing, mapping files, request stats.
 
-Provides access to plugin management (list, upload, download, delete),
-mapping-file management, server version, and request lifecycle.
+Provides access to plugin listing, mapping-file management, server version,
+and request lifecycle.
 
 Quick example::
 
@@ -11,11 +11,6 @@ Quick example::
 
         # List all installed plugins
         plugins = await client.plugins.list()
-
-        # Upload a custom plugin
-        await client.plugins.upload(
-            "/path/to/my_plugin.py", plugin_type="default"
-        )
 
         # List available mapping files
         mappings = await client.plugins.mapping_list()
@@ -27,7 +22,7 @@ Quick example::
 from __future__ import annotations
 
 import inspect
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 
 from gulp_sdk.exceptions import AuthenticationError
 
@@ -37,9 +32,9 @@ if TYPE_CHECKING:
 
 class PluginsAPI:
     """
-    Plugin management, mapping files, server utility, and request-stats endpoints.
+    Plugin listing, mapping files, server utility, and request-stats endpoints.
 
-    Write operations (upload, delete) require **admin** permission.
+    Mapping write operations require **admin** permission.
     """
 
     def __init__(self, client: "GulpClient") -> None:
@@ -77,105 +72,6 @@ class PluginsAPI:
             "GET", "/ui_plugin_list", params=params or None
         )
         return response.get("data", [])
-
-    async def upload(
-        self,
-        file_path: str,
-        *,
-        plugin_type: Literal["default", "extension", "ui"] = "default",
-        fail_if_exists: bool = False,
-        req_id: str | None = None,
-    ) -> dict[str, Any]:
-        """
-        Upload one or more plugin files to the server.
-
-        Args:
-            file_path: Local path to the plugin ``.py`` file.
-            plugin_type: Plugin type category — ``"default"``,
-                ``"extension"``, or ``"ui"``.
-            fail_if_exists: Raise an error if a file with the same name
-                already exists (default: overwrite).
-            req_id: Optional request ID.
-
-        Returns:
-            Dict with ``file_paths`` key listing saved paths on the server.
-        """
-        params: dict[str, Any] = {
-            "plugin_type": plugin_type,
-            "fail_if_exists": fail_if_exists,
-        }
-        if req_id is not None:
-            params["req_id"] = req_id
-        with open(file_path, "rb") as f:
-            files = {"files": (file_path.split("/")[-1], f, "application/octet-stream")}
-            response = await self.client._request(
-                "POST", "/plugin_upload", params=params, files=files
-            )
-        return response.get("data", {})
-
-    async def delete(
-        self,
-        filename: str,
-        *,
-        plugin_type: Literal["default", "extension", "ui"] = "default",
-        req_id: str | None = None,
-    ) -> dict[str, Any]:
-        """
-        Delete a plugin file from the server.
-
-        Args:
-            filename: Filename of the plugin, e.g. ``"my_plugin.py"``.
-            plugin_type: Plugin type category.
-            req_id: Optional request ID.
-
-        Returns:
-            Confirmation dict with ``deleted`` key.
-        """
-        params: dict[str, Any] = {"filename": filename, "plugin_type": plugin_type}
-        if req_id is not None:
-            params["req_id"] = req_id
-        return (
-            await self.client._request("DELETE", "/plugin_delete", params=params)
-        ).get("data", {})
-
-    async def download(
-        self,
-        filename: str,
-        output_path: str,
-        *,
-        plugin_type: Literal["default", "extension", "ui"] = "default",
-        req_id: str | None = None,
-    ) -> str:
-        """
-        Download a plugin file from the server.
-
-        Args:
-            filename: Filename of the plugin to download.
-            output_path: Local path to save the downloaded file.
-            plugin_type: Plugin type category.
-            req_id: Optional request ID.
-
-        Returns:
-            ``output_path`` on success.
-        """
-        params: dict[str, Any] = {"filename": filename, "plugin_type": plugin_type}
-        if req_id is not None:
-            params["req_id"] = req_id
-        req_headers: dict[str, str] = {}
-        if self.client.token:
-            req_headers["token"] = self.client.token
-        resp = await self.client._client.get(
-            "/plugin_download", params=params, headers=req_headers
-        )
-        if resp.status_code >= 400:
-            maybe = self.client._raise_for_status(
-                resp.status_code, resp.json() if resp.content else {}
-            )
-            if inspect.isawaitable(maybe):
-                await maybe
-        with open(output_path, "wb") as f:
-            f.write(resp.content)
-        return output_path
 
     # ------------------------------------------------------------------ #
     # Mapping files                                                        #
@@ -666,74 +562,3 @@ class PluginsAPI:
         return (
             await self.client._request("PATCH", "/request_set_completed", params=params)
         ).get("data", {})
-
-    # ------------------------------------------------------------------ #
-    # Config management                                                    #
-    # ------------------------------------------------------------------ #
-
-    async def config_upload(
-        self,
-        file_path: str,
-        *,
-        req_id: str | None = None,
-    ) -> dict[str, Any]:
-        """
-        Upload a Gulp configuration file to the server.
-
-        The file is saved as ``$GULP_WORKING_DIR/gulp_cfg.json``.  The server
-        must be restarted for the new config to take effect.  Requires
-        **admin** permission.
-
-        Args:
-            file_path: Local path to the ``gulp_cfg.json`` file.
-            req_id: Optional request ID.
-
-        Returns:
-            Dict with ``file_path`` key showing where the config was saved.
-        """
-        params: dict[str, Any] = {}
-        if req_id is not None:
-            params["req_id"] = req_id
-        with open(file_path, "rb") as f:
-            files = {"file": ("gulp_cfg.json", f, "application/json")}
-            response = await self.client._request(
-                "POST", "/config_upload", params=params or None, files=files
-            )
-        return response.get("data", {})
-
-    async def config_download(
-        self,
-        output_path: str,
-        *,
-        req_id: str | None = None,
-    ) -> str:
-        """
-        Download the current Gulp configuration file from the server.
-
-        Requires **admin** permission.
-
-        Args:
-            output_path: Local path to save the downloaded ``gulp_cfg.json``.
-            req_id: Optional request ID.
-
-        Returns:
-            ``output_path`` on success.
-        """
-        params: dict[str, Any] = {}
-        if req_id is not None:
-            params["req_id"] = req_id
-        req_headers: dict[str, str] = {}
-        if self.client.token:
-            req_headers["token"] = self.client.token
-        resp = await self.client._client.get(
-            "/config_download", params=params or None, headers=req_headers
-        )
-        if resp.status_code >= 400:
-            maybe = self.client._raise_for_status(
-                resp.status_code, resp.json() if resp.content else {}
-            )
-            if inspect.isawaitable(maybe):
-                await maybe
-        with open(output_path, "wb") as f:
-            f.write(resp.content)
-        return output_path

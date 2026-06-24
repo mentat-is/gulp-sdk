@@ -835,18 +835,12 @@ async def test_db_plugins_shim(dummy_client, tmp_path: Path):
     dummy_client._request.return_value = {"data": [{"name": "op1"}]}
     assert isinstance(await db.list_indexes(), list)
 
-    pfile = tmp_path / "p.py"
-    pfile.write_text("print('x')", encoding="utf-8")
     mfile = tmp_path / "m.json"
     mfile.write_text("{}", encoding="utf-8")
-    cfile = tmp_path / "cfg.json"
-    cfile.write_text("{}", encoding="utf-8")
 
     dummy_client._request.return_value = {"data": {"ok": True}}
     assert isinstance(await plugins.list(), list) is False or True
     await plugins.list_ui()
-    await plugins.upload(str(pfile))
-    await plugins.delete("p.py")
     await plugins.mapping_list()
     await plugins.mapping_upload(str(mfile))
     await plugins.mapping_delete("m.json")
@@ -861,16 +855,11 @@ async def test_db_plugins_shim(dummy_client, tmp_path: Path):
     await plugins.enhance_map_list()
     await plugins.object_delete_bulk("op1", "note", {})
     await plugins.request_set_completed("r1")
-    await plugins.config_upload(str(cfile))
 
     # download-like methods
-    out1 = tmp_path / "plugin.out"
     out2 = tmp_path / "mapping.out"
-    out3 = tmp_path / "cfg.out"
-    assert (await plugins.download("p.py", str(out1))) == str(out1)
     assert (await plugins.mapping_download("m.json", str(out2))) == str(out2)
-    assert (await plugins.config_download(str(out3))) == str(out3)
-    assert out1.exists() and out2.exists() and out3.exists()
+    assert out2.exists()
 
     dummy_client._request.return_value = {"data": {"version": "1.0"}}
     assert await plugins.version() == "1.0"
@@ -1117,18 +1106,12 @@ async def test_plugins_optional_params_and_download_error_paths(dummy_client, tm
 
     api = PluginsAPI(dummy_client)
 
-    pfile = tmp_path / "plug.py"
-    pfile.write_text("print('x')", encoding="utf-8")
     mfile = tmp_path / "map.json"
     mfile.write_text("{}", encoding="utf-8")
-    cfile = tmp_path / "cfg.json"
-    cfile.write_text("{}", encoding="utf-8")
 
     dummy_client._request.return_value = {"data": {"ok": True}}
     await api.list(req_id="r-list")
     await api.list_ui(req_id="r-list-ui")
-    await api.upload(str(pfile), plugin_type="ui", fail_if_exists=True, req_id="r-up")
-    await api.delete("plug.py", plugin_type="extension", req_id="r-del")
     await api.mapping_list(req_id="r-ml")
     await api.mapping_upload(str(mfile), fail_if_exists=True, req_id="r-mu")
     await api.mapping_delete("map.json", req_id="r-md")
@@ -1144,14 +1127,10 @@ async def test_plugins_optional_params_and_download_error_paths(dummy_client, tm
     await api.enhance_map_list(flt={"plugin": "p"}, req_id="r-eml")
     await api.object_delete_bulk("op1", "note", {"ids": ["n1"]}, req_id="r-odb")
     await api.request_set_completed("rid", failed=True, req_id="r-rsc")
-    await api.config_upload(str(cfile), req_id="r-cu")
-
-    # Exercise download/mapping/config error branches that call _raise_for_status.
+    # Exercise mapping download error branch that calls _raise_for_status.
     dummy_client._client.get = AsyncMock(return_value=_Resp(500, b"err"))
-    await api.download("plug.py", str(tmp_path / "x.py"), req_id="r-down-err")
     await api.mapping_download("map.json", str(tmp_path / "x.json"), req_id="r-md-err")
-    await api.config_download(str(tmp_path / "x.cfg"), req_id="r-cd-err")
-    assert dummy_client._raise_for_status.call_count == 3
+    assert dummy_client._raise_for_status.call_count == 1
 
 
 @pytest.mark.unit
