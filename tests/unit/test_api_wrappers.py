@@ -117,7 +117,7 @@ async def test_queries_export_json_download(dummy_client, tmp_path: Path):
 
 
 @pytest.mark.unit
-async def test_ingest_file_raw_zip_and_status(dummy_client, tmp_path: Path):
+async def test_ingest_file_raw_and_status(dummy_client, tmp_path: Path):
     from gulp_sdk.api.ingest import IngestAPI
 
     api = IngestAPI(dummy_client)
@@ -147,17 +147,6 @@ async def test_ingest_file_raw_zip_and_status(dummy_client, tmp_path: Path):
     assert call.kwargs["params"]["plugin"] == "raw"
     assert call.kwargs["files"][0][0] == "payload"
     assert call.kwargs["files"][1][0] == "f"
-
-    dummy_client._request.return_value = {"status": "pending", "req_id": "r3", "data": {}}
-    zip_file = tmp_path / "bundle.zip"
-    zip_file.write_bytes(b"PK\x03\x04dummy")
-    result_zip = await api.zip(
-        operation_id="op1",
-        plugin_name="ignored",
-        zipfile_path=str(zip_file),
-        params={"flt": {"operation_ids": ["op1"]}},
-    )
-    assert result_zip.req_id == "r3"
 
     dummy_client._request.return_value = {"data": {"status": "done", "id": "req-x"}}
     status = await api.status("op1", "req-x")
@@ -217,9 +206,6 @@ async def test_ingest_local_variants(dummy_client):
 
     dummy_client._request.return_value = {"status": "pending", "req_id": "b", "data": {}}
     assert (await api.file_local_to_source("src1", "path.evtx")).req_id == "b"
-
-    dummy_client._request.return_value = {"status": "pending", "req_id": "c", "data": {}}
-    assert (await api.zip_local("op1", "ctx", "bundle.zip")).req_id == "c"
 
     dummy_client._request.return_value = {"data": ["f1", "f2"]}
     files = await api.local_list()
@@ -1113,35 +1099,6 @@ async def test_ingest_raw_wait_retries_transient_request_stats_notfound(dummy_cl
     dummy_client.plugins = SimpleNamespace(request_get=AsyncMock(side_effect=_request_get))
 
     out = await api.raw("op1", "raw", [{"a": 1}], wait=True, timeout=5)
-    assert out.status == "done"
-    assert calls["n"] >= 2
-
-
-@pytest.mark.unit
-async def test_ingest_zip_wait_retries_transient_request_stats_notfound(dummy_client, tmp_path: Path):
-    from gulp_sdk.api.ingest import IngestAPI
-    from gulp_sdk.exceptions import NotFoundError
-
-    api = IngestAPI(dummy_client)
-    zip_path = tmp_path / "w.zip"
-    zip_path.write_bytes(b"PK\x03\x04")
-
-    dummy_client._request.return_value = {"status": "pending", "req_id": "rwait_zip", "data": {}}
-    calls = {"n": 0}
-
-    async def _request_get(_req_id: str):
-        calls["n"] += 1
-        if calls["n"] == 1:
-            raise NotFoundError(
-                'GulpRequestStats with id "rwait_zip" not found',
-                status_code=404,
-                response_data={"__error": {"name": "ObjectNotFound"}},
-            )
-        return {"status": "done", "id": "rwait_zip"}
-
-    dummy_client.plugins = SimpleNamespace(request_get=AsyncMock(side_effect=_request_get))
-
-    out = await api.zip("op1", "win_evtx", str(zip_path), wait=True, timeout=5)
     assert out.status == "done"
     assert calls["n"] >= 2
 

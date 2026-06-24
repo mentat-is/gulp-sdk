@@ -250,74 +250,6 @@ class IngestAPI:
 
         return result
 
-    async def zip(
-        self,
-        operation_id: str,
-        plugin_name: str,
-        zipfile_path: str,
-        params: dict[str, Any] | None = None,
-        wait: bool = False,
-        timeout: int = 120,
-        ws_callback: "Callable[[WSMessage], None] | None" = None,
-    ) -> IngestResult:
-        """
-        Ingest ZIP archive using specified plugin.
-
-        Args:
-            operation_id: Operation ID
-            plugin_name: Plugin name
-            zipfile_path: Path to .zip file
-            params: Optional plugin-specific parameters
-
-        Returns:
-            IngestResult with req_id for status tracking
-        """
-        zip_path_obj = Path(zipfile_path)
-
-        # ingest_zip uses the same multipart chunked upload pattern as ingest_file.
-        payload: dict[str, Any] = {"flt": {}}
-        if params:
-            payload.update(params)
-
-        # NOTE: plugin_name is kept for backward compatibility with SDK callers,
-        # but the /ingest_zip endpoint resolves plugins from metadata.json in the zip.
-        request_params = {
-            "operation_id": operation_id,
-            "context_name": "sdk_context",
-            "ws_id": self.client.ws_id,
-        }
-        if "req_id" in payload:
-            request_params["req_id"] = payload.pop("req_id")
-
-        response_data = await self._upload_multipart_file(
-            "/ingest_zip",
-            zip_path_obj,
-            payload,
-            request_params,
-            "application/zip",
-        )
-
-        result_data = response_data.get("data", {})
-        result = IngestResult.model_validate(
-            {
-                "req_id": response_data.get("req_id", ""),
-                "status": response_data.get("status", "pending"),
-                **(result_data if isinstance(result_data, dict) else {}),
-            }
-        )
-
-        if wait and result.status == "pending" and result.req_id:
-            stats = await wait_for_request_stats(self.client, result.req_id, timeout, ws_callback=ws_callback)
-            if isinstance(stats, dict):
-                return IngestResult.model_validate(
-                    {
-                        "req_id": result.req_id,
-                        "status": str(stats.get("status", result.status)),
-                    }
-                )
-
-        return result
-
     async def preview(
         self,
         operation_id: str,
@@ -408,6 +340,7 @@ class IngestAPI:
         flt: dict[str, Any] | None = None,
         ws_id: str | None = None,
         req_id: str | None = None,
+        original_file_path: str | None = None,
         wait: bool = False,
         timeout: int = 120,
         ws_callback: "Callable[[WSMessage], None] | None" = None,
@@ -426,6 +359,7 @@ class IngestAPI:
             flt: ``GulpIngestionFilter`` dict.
             ws_id: WebSocket ID for progress notifications.
             req_id: Optional request ID.
+            original_file_path: Original path to store in the ingestion payload.
             wait: If True, wait for async completion and return final request status.
             timeout: Max seconds to wait if ``wait`` is True (0 for no timeout).
 
@@ -440,7 +374,7 @@ class IngestAPI:
         payload: dict[str, Any] = {
             "flt": flt or {},
             "plugin_params": plugin_params or {},
-            "original_file_path": str(file_path_obj),
+            "original_file_path": original_file_path or str(file_path_obj),
         }
 
         params: dict[str, Any] = {
@@ -607,74 +541,6 @@ class IngestAPI:
             "/ingest_file_local_to_source",
             params=params,
             json=body or None,
-        )
-        result = IngestResult.model_validate(
-            {
-                "req_id": response_data.get("req_id", ""),
-                "status": response_data.get("status", "pending"),
-                **(response_data.get("data", {}) or {}),
-            }
-        )
-
-        if wait and result.status == "pending" and result.req_id:
-            stats = await wait_for_request_stats(self.client, result.req_id, timeout, ws_callback=ws_callback)
-            if isinstance(stats, dict):
-                return IngestResult.model_validate(
-                    {
-                        "req_id": result.req_id,
-                        "status": str(stats.get("status", result.status)),
-                    }
-                )
-
-        return result
-
-    async def zip_local(
-        self,
-        operation_id: str,
-        context_name: str,
-        path: str,
-        *,
-        ws_id: str | None = None,
-        flt: dict[str, Any] | None = None,
-        delete_after: bool = False,
-        req_id: str | None = None,
-        wait: bool = False,
-        timeout: int = 120,
-        ws_callback: "Callable[[WSMessage], None] | None" = None,
-    ) -> IngestResult:
-        """
-        Ingest a ZIP archive that resides on the server's local storage.
-
-        The ``path`` must be relative to ``$GULP_WORKING_DIR/ingest_local``.
-        The ZIP must contain a ``metadata.json`` (array of
-        ``GulpZipMetadataEntry``).
-
-        Args:
-            operation_id: Target operation.
-            context_name: Context name for the ingestion.
-            path: Server-side path relative to ``ingest_local``.
-            ws_id: WebSocket ID.
-            flt: ``GulpIngestionFilter`` dict applied to all files.
-            delete_after: Delete the ZIP after processing.
-            req_id: Optional request ID.
-
-        Returns:
-            ``IngestResult`` with ``req_id`` for tracking.
-        """
-        params: dict[str, Any] = {
-            "operation_id": operation_id,
-            "context_name": context_name,
-            "path": path,
-            "ws_id": ws_id or self.client.ws_id,
-            "delete_after": delete_after,
-        }
-        if req_id is not None:
-            params["req_id"] = req_id
-        if flt is not None:
-            params["flt"] = json.dumps(flt)
-
-        response_data = await self.client._request(
-            "POST", "/ingest_zip_local", params=params
         )
         result = IngestResult.model_validate(
             {

@@ -96,7 +96,6 @@ async def test_low_modules_req_id_and_optional_branches(dummy_client, tmp_path: 
     await ingest.file_local_to_source(
         "src1", "path.log", ws_id="ws-z", plugin_params={"custom_parameters": {}}, flt={"ids": ["2"]}, req_id="r-ing-fls"
     )
-    await ingest.zip_local("op1", "ctx", "path.zip", ws_id="ws-zz", flt={"ids": ["3"]}, req_id="r-ing-zl")
     await ingest.local_list(req_id="r-ing-ll")
 
     await enrich.enrich_documents("op1", "enrich_whois", {"f": "v"}, req_id="r-enrich-doc")
