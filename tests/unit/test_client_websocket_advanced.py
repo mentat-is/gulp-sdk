@@ -112,6 +112,29 @@ async def test_client_request_http_error_no_retry():
 
 
 @pytest.mark.unit
+async def test_client_request_returns_existing_request_stats():
+    c = GulpClient("http://localhost:8080")
+    c._http_client = SimpleNamespace()
+    c._retry_policy.max_retries = 0
+    c._http_client.request = AsyncMock(
+        return_value=_Resp(
+            409,
+            {
+                "id": "req-1",
+                "status": "done",
+                "already_exist": True,
+                "data": {"updated": 1},
+            },
+        )
+    )
+
+    out = await c._request("POST", "/enrich_remove")
+
+    assert out["already_exist"] is True
+    assert out["id"] == "req-1"
+
+
+@pytest.mark.unit
 async def test_client_ensure_websocket_requires_token():
     c = GulpClient("http://localhost:8080")
     with pytest.raises(RuntimeError):

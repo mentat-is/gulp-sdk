@@ -261,6 +261,12 @@ class GulpClient:
 
                 # Handle HTTP errors
                 if response.status_code >= 400:
+                    if (
+                        response.status_code == 409
+                        and response_data.get("already_exist") is True
+                    ):
+                        return response_data
+
                     should_retry = self._retry_policy.should_retry(
                         response.status_code, attempt
                     )
