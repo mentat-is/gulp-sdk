@@ -591,6 +591,38 @@ class QueriesAPI:
         )
         return response_data.get("data", {})
 
+    async def query_mapping_by_source(
+        self,
+        operation_id: str,
+        context_id: str,
+        source_id: str,
+        *,
+        req_id: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Get the mapping parameters object used to ingest a specific source.
+
+        Args:
+            operation_id: Parent operation.
+            context_id: Parent context.
+            source_id: Source to inspect.
+            req_id: Optional request ID.
+
+        Returns:
+            The ``mapping_parameters`` object, or ``{}`` when none is stored.
+        """
+        params: dict[str, Any] = {
+            "operation_id": operation_id,
+            "context_id": context_id,
+            "source_id": source_id,
+        }
+        if req_id is not None:
+            params["req_id"] = req_id
+        response_data = await self.client._request(
+            "GET", "/query_mapping_by_source", params=params
+        )
+        return response_data.get("data", {})
+
     async def query_gulp_export_json(
         self,
         operation_id: str,
@@ -643,4 +675,3 @@ class QueriesAPI:
         with open(output_path, "wb") as f:
             f.write(resp.content)
         return output_path
-

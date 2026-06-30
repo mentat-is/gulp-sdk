@@ -937,6 +937,11 @@ async def test_queries_additional_methods(dummy_client, tmp_path: Path):
     dummy_client._request.return_value = {"data": {"field": "keyword"}}
     assert isinstance(await api.query_fields_by_source("op1", "ctx1", "src1"), dict)
 
+    dummy_client._request.return_value = {
+        "data": {"mapping": {"mapping_file": "windows.json"}}
+    }
+    assert isinstance(await api.query_mapping_by_source("op1", "ctx1", "src1"), dict)
+
     # export json already tested in previous test; here cover req_id path
     out = tmp_path / "export2.json"
     assert (await api.query_gulp_export_json("op1", str(out), req_id="r1")) == str(out)
@@ -1197,6 +1202,7 @@ async def test_queries_optional_and_error_branches(dummy_client, tmp_path: Path)
     await api.query_max_min_per_field("op1", flt={"operation_ids": ["op1"]}, group_by="event.code", req_id="r-mm")
     await api.query_operations(req_id="r-ops")
     await api.query_fields_by_source("op1", "ctx1", "src1", req_id="r-fields")
+    await api.query_mapping_by_source("op1", "ctx1", "src1", req_id="r-mapping")
 
     zf = tmp_path / "rules.zip"
     zf.write_bytes(b"PK\x03\x04dummy")
