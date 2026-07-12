@@ -7,6 +7,7 @@ Supports two usage modes:
 """
 
 import asyncio
+import inspect
 import json
 import logging
 from dataclasses import dataclass
@@ -93,14 +94,21 @@ class WSAuthPacket:
     token: str
     ws_id: str
     req_id: str
+    operation_ids: list[str] | None = None
+    types: list[str] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""
-        return {
+        packet = {
             "token": self.token,
             "ws_id": self.ws_id,
             "req_id": self.req_id,
         }
+        if self.operation_ids:
+            packet["operation_ids"] = self.operation_ids
+        if self.types:
+            packet["types"] = self.types
+        return packet
 
 
 class GulpWebSocket:
@@ -115,7 +123,15 @@ class GulpWebSocket:
         ws_id: Unique WebSocket connection ID
     """
 
-    def __init__(self, uri: str, token: str, ws_id: str) -> None:
+    def __init__(
+        self,
+        uri: str,
+        token: str,
+        ws_id: str,
+        *,
+        operation_ids: list[str] | None = None,
+        message_types: list[WSMessageType | str] | None = None,
+    ) -> None:
         """
         Initialize WebSocket client.
 
@@ -127,6 +143,11 @@ class GulpWebSocket:
         self.uri = uri
         self.token = token
         self.ws_id = ws_id
+        self.operation_ids = operation_ids
+        self.message_types = [
+            item.value if isinstance(item, WSMessageType) else str(item)
+            for item in (message_types or [])
+        ] or None
 
         # Connection state
         self._ws: ClientConnection | None = None
@@ -138,10 +159,7 @@ class GulpWebSocket:
         # Message subscriptions
         self._subscriptions: dict[str, list[Callable[[WSMessage], Any]]] = {}
         self._server_subscriptions: list[dict[str, str]] = []
-        self._callback_tasks: set[asyncio.Task[Any]] = set()
-        # Bounded queue to avoid unbounded memory growth when users rely on
-        # callbacks and do not consume async iteration.
-        self._message_queue: asyncio.Queue[WSMessage] = asyncio.Queue(maxsize=2048)
+        self._message_queue: asyncio.Queue[WSMessage] | None = None
 
         self._logger = logging.getLogger(f"{__name__}.{self.__class__.__name__}")
 
@@ -178,13 +196,6 @@ class GulpWebSocket:
             except asyncio.CancelledError:
                 pass
             self._receive_task = None
-
-        for task in list(self._callback_tasks):
-            task.cancel()
-        for task in list(self._callback_tasks):
-            with contextlib.suppress(asyncio.CancelledError):
-                await task
-        self._callback_tasks.clear()
 
         if self._ws:
             await self._ws.close()
@@ -305,24 +316,23 @@ class GulpWebSocket:
 
                     # Trigger registered callbacks (isolate callback failures so
                     # one bad handler does not terminate the receive loop).
-                    for callback in self._subscriptions.get(message.type, []):
-                        self._dispatch_callback(callback, message)
-                    if self._subscriptions.get(message.type):
-                        await asyncio.sleep(0)
+                    for callback in list(self._subscriptions.get(message.type, [])):
+                        await self._dispatch_callback(callback, message)
 
-                    # Queue for async iteration. If full, drop the oldest item
-                    # and keep the newest so the stream remains live under load.
-                    try:
-                        self._message_queue.put_nowait(message)
-                    except asyncio.QueueFull:
-                        try:
-                            self._message_queue.get_nowait()
-                        except asyncio.QueueEmpty:
-                            pass
+                    # Queue only when async iteration is in use. Callback-only
+                    # clients should not retain high-volume messages locally.
+                    if self._message_queue is not None:
                         try:
                             self._message_queue.put_nowait(message)
                         except asyncio.QueueFull:
-                            pass
+                            try:
+                                self._message_queue.get_nowait()
+                            except asyncio.QueueEmpty:
+                                pass
+                            try:
+                                self._message_queue.put_nowait(message)
+                            except asyncio.QueueFull:
+                                pass
 
                 except json.JSONDecodeError:
                     self._logger.warning(f"Invalid JSON message: {msg_text}")
@@ -344,6 +354,8 @@ class GulpWebSocket:
                 token=self.token,
                 ws_id=self.ws_id,
                 req_id="auth-init",
+                operation_ids=self.operation_ids,
+                types=self.message_types,
             )
             await self._ws.send(json.dumps(auth_packet.to_dict()))
 
@@ -459,26 +471,20 @@ class GulpWebSocket:
                 payload["message_type"] = message_type
             await self._ws.send(json.dumps(payload))
 
-    def _dispatch_callback(
+    async def _dispatch_callback(
         self,
         callback: Callable[[WSMessage], Any],
         message: WSMessage,
     ) -> None:
-        async def _run_callback() -> None:
-            try:
-                if asyncio.iscoroutinefunction(callback):
-                    await callback(message)
-                else:
-                    await asyncio.to_thread(callback, message)
-            except Exception:
-                self._logger.exception(
-                    "WebSocket callback failed for message type=%s",
-                    message.type,
-                )
-
-        task = asyncio.create_task(_run_callback())
-        self._callback_tasks.add(task)
-        task.add_done_callback(self._callback_tasks.discard)
+        try:
+            result = callback(message)
+            if inspect.isawaitable(result):
+                await result
+        except Exception:
+            self._logger.exception(
+                "WebSocket callback failed for message type=%s",
+                message.type,
+            )
 
     async def __aenter__(self) -> "GulpWebSocket":
         """Async context manager entry."""
@@ -491,10 +497,14 @@ class GulpWebSocket:
 
     def __aiter__(self) -> AsyncIterator[WSMessage]:
         """Async iteration over messages."""
+        if self._message_queue is None:
+            self._message_queue = asyncio.Queue(maxsize=2048)
         return self
 
     async def __anext__(self) -> WSMessage:
         """Get next message (for async iteration)."""
         if not self._connected:
             raise StopAsyncIteration
+        if self._message_queue is None:
+            self._message_queue = asyncio.Queue(maxsize=2048)
         return await self._message_queue.get()

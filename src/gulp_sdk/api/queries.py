@@ -536,22 +536,26 @@ class QueriesAPI:
     async def query_operations(
         self,
         *,
+        include_empty_sources: bool = False,
         req_id: str | None = None,
     ) -> list[dict[str, Any]]:
         """
         Get all operations with aggregated context/source/field stats.
 
         Returns operations with their contexts, sources, and per-source max/min
-        ``event.code`` and ``gulp.timestamp`` values.
+        ``event.code`` and ``gulp.timestamp`` values. Sources with 0 events are
+        returned only when ``include_empty_sources`` is true.
 
         Returns:
             List of operation dicts with nested context/source structure.
         """
-        params: dict[str, Any] = {}
+        params: dict[str, Any] = {
+            "include_empty_sources": include_empty_sources,
+        }
         if req_id is not None:
             params["req_id"] = req_id
         response_data = await self.client._request(
-            "GET", "/query_operations", params=params or None
+            "GET", "/query_operations", params=params
         )
         return response_data.get("data", [])
 

@@ -36,6 +36,23 @@ async def test_ws_auth_packet():
 
 
 @pytest.mark.unit
+async def test_ws_auth_packet_includes_filters():
+    """Test WebSocket auth packet includes server-side filters."""
+    auth = WSAuthPacket(
+        token="test-token",
+        ws_id="ws-id-123",
+        req_id="auth-req",
+        operation_ids=["op-a"],
+        types=["stats_update", "collab_create"],
+    )
+
+    data = auth.to_dict()
+
+    assert data["operation_ids"] == ["op-a"]
+    assert data["types"] == ["stats_update", "collab_create"]
+
+
+@pytest.mark.unit
 async def test_gulp_client_websocket_method():
     """Test GulpClient.websocket() creates WebSocket instance."""
     from gulp_sdk import GulpClient
@@ -45,6 +62,23 @@ async def test_gulp_client_websocket_method():
     
     assert ws.token == "test-token"
     assert "ws://" in ws.uri
+
+
+@pytest.mark.unit
+async def test_gulp_client_websocket_passes_filters():
+    """Test GulpClient.websocket() passes auth-time filters."""
+    from gulp_sdk import GulpClient
+
+    client = GulpClient(
+        "http://localhost:8080",
+        token="test-token",
+        ws_operation_ids=["op-a"],
+        ws_message_types=[WSMessageType.STATS_UPDATE, "collab_create"],
+    )
+    ws = client.websocket()
+
+    assert ws.operation_ids == ["op-a"]
+    assert ws.message_types == ["stats_update", "collab_create"]
 
 
 @pytest.mark.unit

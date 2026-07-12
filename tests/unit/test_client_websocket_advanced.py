@@ -303,6 +303,50 @@ async def test_websocket_receive_loop_async_callback_and_stop_iteration():
 
 
 @pytest.mark.unit
+async def test_websocket_receive_loop_runs_callbacks_without_task_fanout():
+    ws = GulpWebSocket("ws://localhost:8080/ws", "tok", "ws1")
+    ws._connected = True
+
+    messages = [
+        json.dumps(
+            {
+                "type": "docs_chunk",
+                "req_id": f"r{i}",
+                "timestamp_msec": i,
+                "payload": {},
+            }
+        )
+        for i in range(25)
+    ]
+
+    class _WS:
+        async def recv(self):
+            if messages:
+                return messages.pop(0)
+            raise asyncio.CancelledError()
+
+    ws._ws = _WS()
+    active = 0
+    max_active = 0
+    seen = 0
+
+    async def cb(_msg):
+        nonlocal active, max_active, seen
+        active += 1
+        max_active = max(max_active, active)
+        await asyncio.sleep(0)
+        seen += 1
+        active -= 1
+
+    ws.on_message(WSMessageType.DOCUMENTS_CHUNK, cb)
+    await ws._receive_loop()
+
+    assert seen == 25
+    assert max_active == 1
+    assert ws._message_queue is None
+
+
+@pytest.mark.unit
 async def test_client_additional_branches_and_properties(monkeypatch):
     c = GulpClient("https://localhost:8080", token="tok")
 

@@ -528,6 +528,37 @@ class PluginsAPI:
             )
         ).get("data", {})
 
+    async def object_count(
+        self,
+        obj_type: str,
+        flt: dict[str, Any] | None = None,
+        *,
+        operation_id: str | None = None,
+        req_id: str | None = None,
+    ) -> dict[str, Any]:
+        """
+        Count collaboration objects of a given type.
+
+        Args:
+            obj_type: Collab object type string (e.g. ``"note"``).
+            flt: Optional ``GulpCollabFilter``-compatible dict.
+            operation_id: Optional operation to scope the count.
+            req_id: Optional request ID.
+
+        Returns:
+            Dict with ``count``.
+        """
+        params: dict[str, Any] = {"obj_type": obj_type}
+        if operation_id is not None:
+            params["operation_id"] = operation_id
+        if req_id is not None:
+            params["req_id"] = req_id
+        return (
+            await self.client._request(
+                "POST", "/object_count", params=params, json=flt or {}
+            )
+        ).get("data", {})
+
     async def request_set_completed(
         self,
         req_id_to_complete: str,

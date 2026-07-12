@@ -52,6 +52,8 @@ class GulpClient:
         token: str | None = None,
         timeout: float = 30.0,
         ws_auto_connect: bool = True,
+        ws_operation_ids: list[str] | None = None,
+        ws_message_types: list[WSMessageType | str] | None = None,
     ) -> None:
         """
         Initialize GulpClient.
@@ -66,6 +68,8 @@ class GulpClient:
         self.token = token
         self.timeout = timeout
         self.ws_auto_connect = ws_auto_connect
+        self.ws_operation_ids = ws_operation_ids
+        self.ws_message_types = ws_message_types
 
         # HTTP client (created in __aenter__)
         self._http_client: httpx.AsyncClient | None = None
@@ -381,7 +385,13 @@ class GulpClient:
         ws_url = self.base_url.replace("http://", "ws://").replace("https://", "wss://")
         ws_uri = f"{ws_url}/ws"
 
-        return GulpWebSocket(ws_uri, self.token, self._ws_id)
+        return GulpWebSocket(
+            ws_uri,
+            self.token,
+            self._ws_id,
+            operation_ids=self.ws_operation_ids,
+            message_types=self.ws_message_types,
+        )
 
     # API endpoint groups (to be implemented in phase 4)
 

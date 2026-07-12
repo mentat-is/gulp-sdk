@@ -854,6 +854,7 @@ async def test_db_plugins_shim(dummy_client, tmp_path: Path):
     await plugins.enhance_map_get("e1")
     await plugins.enhance_map_list()
     await plugins.object_delete_bulk("op1", "note", {})
+    await plugins.object_count("note", operation_id="op1")
     await plugins.request_set_completed("r1")
 
     # download-like methods
@@ -932,7 +933,12 @@ async def test_queries_additional_methods(dummy_client, tmp_path: Path):
     assert isinstance(await api.query_max_min_per_field("op1", group_by="event.code"), dict)
 
     dummy_client._request.return_value = {"data": [{"id": "op1"}]}
-    assert isinstance(await api.query_operations(), list)
+    assert isinstance(
+        await api.query_operations(include_empty_sources=True),
+        list,
+    )
+    call = dummy_client._request.await_args_list[-1]
+    assert call.kwargs["params"] == {"include_empty_sources": True}
 
     dummy_client._request.return_value = {"data": {"field": "keyword"}}
     assert isinstance(await api.query_fields_by_source("op1", "ctx1", "src1"), dict)
@@ -1131,6 +1137,15 @@ async def test_plugins_optional_params_and_download_error_paths(dummy_client, tm
     await api.enhance_map_get("e1", req_id="r-emg")
     await api.enhance_map_list(flt={"plugin": "p"}, req_id="r-eml")
     await api.object_delete_bulk("op1", "note", {"ids": ["n1"]}, req_id="r-odb")
+    await api.object_count("note", {"ids": ["n1"]}, operation_id="op1", req_id="r-oc")
+    call = dummy_client._request.await_args_list[-1]
+    assert call.args[:2] == ("POST", "/object_count")
+    assert call.kwargs["params"] == {
+        "obj_type": "note",
+        "operation_id": "op1",
+        "req_id": "r-oc",
+    }
+    assert call.kwargs["json"] == {"ids": ["n1"]}
     await api.request_set_completed("rid", failed=True, req_id="r-rsc")
     # Exercise mapping download error branch that calls _raise_for_status.
     dummy_client._client.get = AsyncMock(return_value=_Resp(500, b"err"))
