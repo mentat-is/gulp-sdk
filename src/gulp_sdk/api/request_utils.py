@@ -29,7 +29,6 @@ _WS_PROGRESS_TYPES: tuple[WSMessageType, ...] = (
     WSMessageType.QUERY_DONE,
     WSMessageType.INGEST_SOURCE_DONE,
     WSMessageType.DOCUMENTS_CHUNK,
-    WSMessageType.QUERY_GROUP_MATCH,
 )
 
 def _build_ws_result(req_id: str, status: str, message: WSMessage) -> dict[str, Any]:

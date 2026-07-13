@@ -49,7 +49,6 @@ class WSMessageType(str, Enum):
     REBASE_DONE = "rebase_done"
 
     # Query results
-    QUERY_GROUP_MATCH = "query_group_match"
     QUERY_DONE = "query_done"
 
     # Collaboration updates
