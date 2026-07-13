@@ -17,7 +17,7 @@ async def websocket_request_status_example():
         # Start an async query that returns pending immediately.
         resp = await client.queries.query_raw(
             operation_id="my_op",
-            q=[{"query": {"match_all": {}}}],
+            q={"query": {"match_all": {}}},
             req_id="req123",
             wait=False,
         )

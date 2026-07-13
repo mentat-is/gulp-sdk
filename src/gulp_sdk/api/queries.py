@@ -20,7 +20,7 @@ Quick example::
         # Raw OpenSearch DSL
         result = await client.queries.query_raw(
             operation_id="my_op",
-            q=[{"query": {"match_all": {}}}],
+            q={"query": {"match_all": {}}},
             q_options={"name": "all-events"},
         )
 
@@ -56,7 +56,7 @@ class QueriesAPI:
     async def query_raw(
         self,
         operation_id: str,
-        q: list[dict[str, Any]],
+        q: dict[str, Any],
         *,
         ws_id: str | None = None,
         q_options: dict[str, Any] | None = None,
@@ -68,13 +68,13 @@ class QueriesAPI:
         """
         Query Gulp using raw OpenSearch DSL.
 
-        Runs one or more queries and streams matching documents back via
+        Runs one query and streams matching documents back via
         WebSocket (or returns them directly when ``q_options["preview_mode"]``
         is ``True``).
 
         Args:
             operation_id: Target operation.
-            q: List of OpenSearch DSL query dicts.
+            q: OpenSearch DSL query dict.
             ws_id: WebSocket ID (defaults to client ws_id).
             q_options: ``GulpQueryParameters`` dict — supports pagination,
                 field filtering, sorting, ``preview_mode``, ``name``,

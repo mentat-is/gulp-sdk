@@ -1209,7 +1209,7 @@ async def test_queries_optional_and_error_branches(dummy_client, tmp_path: Path)
     api = QueriesAPI(dummy_client)
 
     dummy_client._request.return_value = {"status": "pending", "req_id": "r", "data": {}}
-    await api.query_raw("op1", [{"query": {"match_all": {}}}], req_id="r-raw")
+    await api.query_raw("op1", {"query": {"match_all": {}}}, req_id="r-raw")
     await api.query_gulp("op1", flt={"operation_ids": ["op1"]}, req_id="r-gulp")
     await api.query_single_id("op1", "d1", req_id="r-single")
     await api.query_aggregation("op1", {"size": 0}, req_id="r-agg")

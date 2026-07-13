@@ -44,7 +44,7 @@ async def main():
         print("Querying ingested docs via query_raw (preview_mode)")
         raw = await client.queries.query_raw(
             operation_id=op.id,
-            q=[{"query": {"match_all": {}}}],
+            q={"query": {"match_all": {}}},
             q_options={"preview_mode": True, "limit": 10},
         )
 
