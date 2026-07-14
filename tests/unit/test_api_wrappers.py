@@ -134,17 +134,27 @@ async def test_ingest_file_raw_and_status(dummy_client, tmp_path: Path):
     )
     assert result_file.req_id == "r1"
 
-    dummy_client._request.return_value = {"status": "pending", "req_id": "r2", "data": {}}
+    dummy_client._request.return_value = {
+        "status": "success",
+        "req_id": "r2",
+        "data": {"last": False},
+    }
     result_raw = await api.raw(
         operation_id="op1",
         plugin_name="raw",
         data=[{"@timestamp": "2024-01-01T00:00:00Z", "message": "x"}],
+        wait_for_worker=True,
+        timeout=3600,
     )
     assert result_raw.req_id == "r2"
+    assert result_raw.status == "success"
+    assert result_raw.last is False
     call = dummy_client._request.await_args_list[-1]
     assert call.args[0] == "POST"
     assert call.args[1] == "/ingest_raw"
     assert call.kwargs["params"]["plugin"] == "raw"
+    assert call.kwargs["params"]["wait"] is True
+    assert call.kwargs["timeout"] == 3600
     assert call.kwargs["files"][0][0] == "payload"
     assert call.kwargs["files"][1][0] == "f"
 

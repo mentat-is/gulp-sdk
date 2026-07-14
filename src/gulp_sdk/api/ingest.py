@@ -175,6 +175,7 @@ class IngestAPI:
         wait: bool = False,
         timeout: int = 120,
         ws_callback: "Callable[[WSMessage], None] | None" = None,
+        wait_for_worker: bool = False,
     ) -> IngestResult:
         """
         Ingest raw data using specified plugin.
@@ -184,6 +185,9 @@ class IngestAPI:
             plugin_name: Plugin name
             data: Raw data (dict, string, or bytes)
             params: Optional plugin-specific parameters
+            wait_for_worker: Wait until this chunk finishes processing
+            wait: Wait until the overall request reaches a terminal status
+            timeout: Timeout in seconds for either wait
 
         Returns:
             IngestResult with req_id for status tracking
@@ -198,6 +202,8 @@ class IngestAPI:
         }
         if plugin_name:
             request_params["plugin"] = plugin_name
+        if wait_for_worker:
+            request_params["wait"] = True
         if params:
             if "flt" in params:
                 payload["flt"] = params["flt"]
@@ -227,6 +233,7 @@ class IngestAPI:
             "/ingest_raw",
             files=files,
             params=request_params,
+            timeout=timeout if wait_for_worker else None,
         )
 
         result_data = response_data.get("data", {})
