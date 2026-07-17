@@ -305,6 +305,8 @@ class GulpClient:
 
             # Retry on certain exceptions
             if isinstance(last_error, (NetworkError,)):
+                if method.upper() == "DELETE":
+                    break
                 if attempt < self._retry_policy.max_retries:
                     delay = self._retry_policy.get_delay(attempt)
                     self._logger.debug(

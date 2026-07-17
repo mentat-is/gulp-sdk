@@ -97,6 +97,16 @@ async def test_client_request_retry_and_network_error():
     out = await c._request("GET", "/x")
     assert out["data"]["ok"] is True
 
+    c._http_client.request = AsyncMock(
+        side_effect=[
+            httpx.NetworkError("net"),
+            _Resp(200, {"status": "success", "data": {"ok": True}}),
+        ]
+    )
+    with pytest.raises(NetworkError):
+        await c._request("DELETE", "/x")
+    assert c._http_client.request.await_count == 1
+
 
 @pytest.mark.unit
 async def test_client_request_http_error_no_retry():
