@@ -41,6 +41,14 @@ async def main():
         async for doc in client.documents.list(operation_id=op.id):
             print(doc.id, doc.raw.get("@timestamp"))
 
+        # Given an existing note ID, upload and download one attachment.
+        attachment = await client.collab.note_add_attachment(
+            "note-id", "evidence.bin", title="Evidence"
+        )
+        await client.collab.note_get_attachment(
+            "note-id", attachment["id"], "downloaded-evidence.bin"
+        )
+
 asyncio.run(main())
 ```
 

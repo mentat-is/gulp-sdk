@@ -60,8 +60,7 @@ class DbAPI:
         Rebase (shift) document timestamps in-place using ``update_by_query``.
 
         The default script shifts both ``@timestamp`` and ``gulp.timestamp``
-        by ``offset_msec`` milliseconds.  A custom Painless ``script`` may be
-        provided to override this behaviour.
+        by ``offset_msec`` milliseconds.
 
         Requires **ingest** permission.  Progress is reported on ``ws_id``.
 

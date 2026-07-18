@@ -144,8 +144,23 @@ class Note(BaseModel):
     document_id: str = Field(..., description="Associated document ID")
     author_id: str = Field(..., description="Author user ID")
     text: str = Field(..., description="Note content")
+    attachment_ids: list[str] = Field(
+        default_factory=list, description="IDs of normalized note attachments"
+    )
     created_at: datetime | None = Field(default=None)
     updated_at: datetime | None = Field(default=None)
+
+
+class NoteAttachment(BaseModel):
+    """Metadata for a binary object attached to a note."""
+
+    id: str = Field(..., description="Attachment ID and object-storage key")
+    note_id: str = Field(..., description="Parent note ID")
+    user_id: str = Field(..., description="Uploading user ID")
+    operation_id: str = Field(..., description="Parent operation ID")
+    title: str = Field(..., description="Download filename/title")
+    description: str = Field(default="", description="Attachment description")
+    mime_type: str = Field(..., description="Stored MIME type")
 
 
 class Highlight(BaseModel):

@@ -56,6 +56,10 @@ This page maps the main `gulp-sdk` API groups to the corresponding methods. All 
 ## Collaboration (`client.collab`)
 
 - `note_create`, `note_update`, `note_delete`, `note_list`
+- `note_add_attachment(note_id, file_path, title=None, mime_type=None)`
+- `note_delete_attachment(note_id, attachment_id)`
+- `note_list_attachments(note_id)`
+- `note_get_attachment(note_id, attachment_id, output_path)`
 - `link_create`, `link_update`, `link_delete`, `link_list`
 - `highlight_create`, `highlight_update`, `highlight_delete` (if supported)
 

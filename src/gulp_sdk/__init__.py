@@ -55,6 +55,7 @@ from gulp_sdk.models import (
     Operation,
     GulpDocument,
     Note,
+    NoteAttachment,
     Link,
     Highlight,
     Glyph,
@@ -99,6 +100,7 @@ __all__ = [
     "Operation",
     "GulpDocument",
     "Note",
+    "NoteAttachment",
     "Link",
     "Highlight",
     "Glyph",
@@ -117,4 +119,3 @@ __all__ = [
     "RequestLogger",
     "RetryPolicy",
 ]
-

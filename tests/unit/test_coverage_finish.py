@@ -81,7 +81,7 @@ async def test_low_modules_req_id_and_optional_branches(dummy_client, tmp_path: 
     await acl.make_private("o1", "note", req_id="r-acl-pr")
     await acl.make_public("o1", "note", req_id="r-acl-pu")
 
-    await db.rebase_by_query("op1", "ws1", 1000, flt={"operation_ids": ["op1"]}, script="ctx._source.x=1", req_id="r-db-reb")
+    await db.rebase_by_query("op1", "ws1", 1000, flt={"operation_ids": ["op1"]}, fields=["event.created"], req_id="r-db-reb")
     await db.delete_index("op1", delete_operation=False, req_id="r-db-del")
     await db.list_indexes(req_id="r-db-list")
     await db.refresh_index("op1", req_id="r-db-ref")
@@ -99,7 +99,7 @@ async def test_low_modules_req_id_and_optional_branches(dummy_client, tmp_path: 
     await ingest.local_list(req_id="r-ing-ll")
 
     await enrich.enrich_documents("op1", "enrich_whois", {"f": "v"}, req_id="r-enrich-doc")
-    await enrich.enrich_single_id("op1", "d1", "enrich_whois", {"f": "v"}, req_id="r-enrich-one")
+    await enrich.enrich_single_id("op1", "d1", "enrich_whois", fields={"f": "v"}, req_id="r-enrich-one")
     await enrich.update_documents("op1", {"f": "v"}, req_id="r-enrich-upd")
     await enrich.update_single_id("op1", "d1", {"f": "v"}, req_id="r-enrich-upd1")
     await enrich.tag_documents("op1", ["t"], req_id="r-enrich-tag")

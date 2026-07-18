@@ -1,5 +1,8 @@
 """Collaboration API — notes, links, highlights, glyphs."""
 
+import inspect
+import mimetypes
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -153,6 +156,108 @@ class CollabAPI:
             "POST", "/note_list", json=flt or {}, params=params or None
         )
         return response_data.get("data", [])
+
+    async def note_add_attachment(
+        self,
+        obj_id: str,
+        file_path: str,
+        *,
+        title: str | None = None,
+        mime_type: str | None = None,
+        ws_id: str | None = None,
+        req_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Upload one attachment to a note."""
+        params: dict[str, Any] = {
+            "obj_id": obj_id,
+            "ws_id": ws_id or self.client.ws_id,
+        }
+        if title is not None:
+            params["title"] = title
+        if mime_type is not None:
+            params["mime_type"] = mime_type
+        if req_id is not None:
+            params["req_id"] = req_id
+
+        path = Path(file_path)
+        content_type = (
+            mime_type
+            or mimetypes.guess_type(path.name)[0]
+            or "application/octet-stream"
+        )
+        with path.open("rb") as file_handle:
+            response_data = await self.client._request(
+                "POST",
+                "/note_add_attachment",
+                params=params,
+                files={"attachment": (path.name, file_handle, content_type)},
+            )
+        return response_data.get("data", {})
+
+    async def note_delete_attachment(
+        self,
+        obj_id: str,
+        attachment_id: str,
+        *,
+        ws_id: str | None = None,
+        req_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Delete one attachment from a note."""
+        params: dict[str, Any] = {
+            "obj_id": obj_id,
+            "attachment_id": attachment_id,
+            "ws_id": ws_id or self.client.ws_id,
+        }
+        if req_id is not None:
+            params["req_id"] = req_id
+        response_data = await self.client._request(
+            "DELETE", "/note_delete_attachment", params=params
+        )
+        return response_data.get("data", {})
+
+    async def note_list_attachments(
+        self,
+        obj_id: str,
+        *,
+        req_id: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """List attachment metadata for a note."""
+        params: dict[str, Any] = {"obj_id": obj_id}
+        if req_id is not None:
+            params["req_id"] = req_id
+        response_data = await self.client._request(
+            "GET", "/note_list_attachments", params=params
+        )
+        return response_data.get("data", [])
+
+    async def note_get_attachment(
+        self,
+        obj_id: str,
+        attachment_id: str,
+        output_path: str,
+        *,
+        req_id: str | None = None,
+    ) -> str:
+        """Download one note attachment to ``output_path``."""
+        params: dict[str, Any] = {
+            "obj_id": obj_id,
+            "attachment_id": attachment_id,
+        }
+        if req_id is not None:
+            params["req_id"] = req_id
+        headers = {"token": self.client.token} if self.client.token else {}
+        response = await self.client._client.get(
+            "/note_get_attachment", params=params, headers=headers
+        )
+        if response.status_code >= 400:
+            maybe = self.client._raise_for_status(
+                response.status_code,
+                response.json() if response.content else {},
+            )
+            if inspect.isawaitable(maybe):
+                await maybe
+        Path(output_path).write_bytes(response.content)
+        return output_path
 
     # ------------------------------------------------------------------ links
 
