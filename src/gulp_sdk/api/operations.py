@@ -125,7 +125,7 @@ class OperationsAPI:
         self, operation_id: str, ws_id: str | None = None, force: bool = False
     ) -> bool:
         """
-        Delete an operation.
+        Delete an operation and all related MinIO objects.
 
         Args:
             operation_id: Operation ID
