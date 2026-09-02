@@ -1,7 +1,13 @@
 """Unit tests for WebSocket and real-time features."""
 
 import pytest
-from gulp_sdk.websocket import WSMessage, WSMessageType, WSAuthPacket
+from gulp_sdk.websocket import (
+    WS_CAPABILITY_DOCUMENTS_CHUNK_ACK,
+    WSAuthPacket,
+    WSDocumentsChunkAckPacket,
+    WSMessage,
+    WSMessageType,
+)
 
 
 @pytest.mark.unit
@@ -50,6 +56,21 @@ async def test_ws_auth_packet_includes_filters():
 
     assert data["operation_ids"] == ["op-a"]
     assert data["types"] == ["stats_update", "collab_create"]
+
+
+@pytest.mark.unit
+async def test_documents_chunk_ack_packet_serialization():
+    packet = WSDocumentsChunkAckPacket(req_id="request-1", chunk_number=7)
+
+    assert packet.to_dict() == {
+        "type": WSMessageType.DOCUMENTS_CHUNK_ACK.value,
+        "req_id": "request-1",
+        "payload": {"req_id": "request-1", "chunk_number": 7},
+    }
+    assert WS_CAPABILITY_DOCUMENTS_CHUNK_ACK == "docs_chunk_ack_v1"
+
+    with pytest.raises(ValueError):
+        WSDocumentsChunkAckPacket(req_id="request-1", chunk_number=0).to_dict()
 
 
 @pytest.mark.unit

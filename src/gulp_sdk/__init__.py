@@ -65,7 +65,13 @@ from gulp_sdk.models import (
     MappingFile,
     EnhanceDocumentMap,
 )
-from gulp_sdk.websocket import GulpWebSocket, WSMessage, WSMessageType
+from gulp_sdk.websocket import (
+    GulpWebSocket,
+    WS_CAPABILITY_DOCUMENTS_CHUNK_ACK,
+    WSDocumentsChunkAckPacket,
+    WSMessage,
+    WSMessageType,
+)
 from gulp_sdk.pagination import AsyncPaginator, CursorPaginator
 from gulp_sdk.utils import RequestLogger, RetryPolicy
 
@@ -111,6 +117,8 @@ __all__ = [
     "EnhanceDocumentMap",
     # WebSocket
     "GulpWebSocket",
+    "WS_CAPABILITY_DOCUMENTS_CHUNK_ACK",
+    "WSDocumentsChunkAckPacket",
     "WSMessage",
     "WSMessageType",
     # Utilities

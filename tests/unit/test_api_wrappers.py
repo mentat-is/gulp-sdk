@@ -25,11 +25,13 @@ def dummy_client():
     client.ws_id = "ws-test"
     client.token = "tok-test"
     client.base_url = "http://localhost:8080"
-    client._request = AsyncMock(return_value={"status": "pending", "req_id": "r1", "data": {}})
+    client._request = AsyncMock(
+        return_value={"status": "pending", "req_id": "r1", "data": {}}
+    )
     client._raise_for_status = Mock()
 
     async def _post(*args, **kwargs):
-        return _DummyResponse(status_code=200, content=b"{\"ok\": true}")
+        return _DummyResponse(status_code=200, content=b'{"ok": true}')
 
     async def _get(*args, **kwargs):
         return _DummyResponse(status_code=200, content=b"download")
@@ -58,7 +60,9 @@ async def test_queries_query_sigma_and_external(dummy_client):
 
     await api.query_sigma(
         operation_id="op1",
-        sigmas=["title: Match All\nlogsource:\n  product: windows\ndetection:\n  selection: {}\n  condition: selection\n"],
+        sigmas=[
+            "title: Match All\nlogsource:\n  product: windows\ndetection:\n  selection: {}\n  condition: selection\n"
+        ],
         src_ids=[],
         levels=["high"],
         products=["windows"],
@@ -113,7 +117,7 @@ async def test_queries_export_json_download(dummy_client, tmp_path: Path):
 
     assert saved == str(out_path)
     assert out_path.exists()
-    assert out_path.read_bytes() == b"{\"ok\": true}"
+    assert out_path.read_bytes() == b'{"ok": true}'
 
 
 @pytest.mark.unit
@@ -211,10 +215,18 @@ async def test_ingest_local_variants(dummy_client):
 
     api = IngestAPI(dummy_client)
 
-    dummy_client._request.return_value = {"status": "pending", "req_id": "a", "data": {}}
+    dummy_client._request.return_value = {
+        "status": "pending",
+        "req_id": "a",
+        "data": {},
+    }
     assert (await api.file_local("op1", "ctx", "win_evtx", "path.evtx")).req_id == "a"
 
-    dummy_client._request.return_value = {"status": "pending", "req_id": "b", "data": {}}
+    dummy_client._request.return_value = {
+        "status": "pending",
+        "req_id": "b",
+        "data": {},
+    }
     assert (await api.file_local_to_source("src1", "path.evtx")).req_id == "b"
 
     dummy_client._request.return_value = {"data": ["f1", "f2"]}
@@ -247,22 +259,38 @@ async def test_enrich_all_methods(dummy_client):
     )
     assert one.get("id") == "doc1"
 
-    dummy_client._request.return_value = {"status": "pending", "req_id": "upd", "data": {}}
+    dummy_client._request.return_value = {
+        "status": "pending",
+        "req_id": "upd",
+        "data": {},
+    }
     await api.update_documents("op1", {"a": 1}, flt={"operation_ids": ["op1"]})
 
     dummy_client._request.return_value = {"data": {"id": "doc1"}}
     assert (await api.update_single_id("op1", "doc1", {"a": 2})).get("id") == "doc1"
 
-    dummy_client._request.return_value = {"status": "pending", "req_id": "tag", "data": {}}
+    dummy_client._request.return_value = {
+        "status": "pending",
+        "req_id": "tag",
+        "data": {},
+    }
     await api.tag_documents("op1", ["t1"], flt={"operation_ids": ["op1"]})
 
     dummy_client._request.return_value = {"data": {"id": "doc1"}}
     assert (await api.tag_single_id("op1", "doc1", ["t2"]))["id"] == "doc1"
 
-    dummy_client._request.return_value = {"status": "pending", "req_id": "untag", "data": {}}
+    dummy_client._request.return_value = {
+        "status": "pending",
+        "req_id": "untag",
+        "data": {},
+    }
     await api.untag_documents("op1", ["t1"], flt={"operation_ids": ["op1"]})
 
-    dummy_client._request.return_value = {"status": "pending", "req_id": "rm", "data": {}}
+    dummy_client._request.return_value = {
+        "status": "pending",
+        "req_id": "rm",
+        "data": {},
+    }
     await api.enrich_remove("op1", flt={"operation_ids": ["op1"]})
 
     assert dummy_client._request.await_count >= 8
@@ -274,7 +302,11 @@ async def test_enrich_wait_retries_transient_request_stats_notfound(dummy_client
     from gulp_sdk.exceptions import NotFoundError
 
     api = EnrichAPI(dummy_client)
-    dummy_client._request.return_value = {"status": "pending", "req_id": "req-wait", "data": {}}
+    dummy_client._request.return_value = {
+        "status": "pending",
+        "req_id": "req-wait",
+        "data": {},
+    }
     calls = {"n": 0}
 
     async def _request_get(_req_id: str):
@@ -325,7 +357,9 @@ async def test_queries_wait_retries_transient_request_stats_notfound(dummy_clien
             )
         return {"status": "done", "id": "req-wait"}
 
-    dummy_client.plugins = SimpleNamespace(request_get=AsyncMock(side_effect=_request_get))
+    dummy_client.plugins = SimpleNamespace(
+        request_get=AsyncMock(side_effect=_request_get)
+    )
 
     out = await api.query_gulp(
         operation_id="op1",
@@ -344,7 +378,11 @@ async def test_enrich_wait_raises_non_transient_notfound(dummy_client):
     from gulp_sdk.exceptions import NotFoundError
 
     api = EnrichAPI(dummy_client)
-    dummy_client._request.return_value = {"status": "pending", "req_id": "req-wait", "data": {}}
+    dummy_client._request.return_value = {
+        "status": "pending",
+        "req_id": "req-wait",
+        "data": {},
+    }
     dummy_client.plugins = SimpleNamespace(
         request_get=AsyncMock(
             side_effect=NotFoundError(
@@ -371,7 +409,11 @@ async def test_enrich_tag_wait_retries_transient_request_stats_notfound(dummy_cl
     from gulp_sdk.exceptions import NotFoundError
 
     api = EnrichAPI(dummy_client)
-    dummy_client._request.return_value = {"status": "pending", "req_id": "rwait", "data": {}}
+    dummy_client._request.return_value = {
+        "status": "pending",
+        "req_id": "rwait",
+        "data": {},
+    }
     calls = {"n": 0}
 
     async def _request_get(_req_id: str):
@@ -384,7 +426,9 @@ async def test_enrich_tag_wait_retries_transient_request_stats_notfound(dummy_cl
             )
         return {"status": "done", "id": "rwait"}
 
-    dummy_client.plugins = SimpleNamespace(request_get=AsyncMock(side_effect=_request_get))
+    dummy_client.plugins = SimpleNamespace(
+        request_get=AsyncMock(side_effect=_request_get)
+    )
 
     out = await api.tag_documents(
         "op1",
@@ -398,12 +442,18 @@ async def test_enrich_tag_wait_retries_transient_request_stats_notfound(dummy_cl
 
 
 @pytest.mark.unit
-async def test_enrich_enrich_documents_wait_retries_transient_request_stats_notfound(dummy_client):
+async def test_enrich_enrich_documents_wait_retries_transient_request_stats_notfound(
+    dummy_client,
+):
     from gulp_sdk.api.enrich import EnrichAPI
     from gulp_sdk.exceptions import NotFoundError
 
     api = EnrichAPI(dummy_client)
-    dummy_client._request.return_value = {"status": "pending", "req_id": "req-wait", "data": {}}
+    dummy_client._request.return_value = {
+        "status": "pending",
+        "req_id": "req-wait",
+        "data": {},
+    }
     calls = {"n": 0}
 
     async def _request_get(_req_id: str):
@@ -416,7 +466,9 @@ async def test_enrich_enrich_documents_wait_retries_transient_request_stats_notf
             )
         return {"status": "done", "id": "req-wait"}
 
-    dummy_client.plugins = SimpleNamespace(request_get=AsyncMock(side_effect=_request_get))
+    dummy_client.plugins = SimpleNamespace(
+        request_get=AsyncMock(side_effect=_request_get)
+    )
 
     out = await api.enrich_documents(
         "op1",
@@ -553,7 +605,9 @@ async def test_collab_all_methods(dummy_client, tmp_path: Path):
 
 
 @pytest.mark.unit
-async def test_collab_optional_params_and_filter_inference(dummy_client, tmp_path: Path):
+async def test_collab_optional_params_and_filter_inference(
+    dummy_client, tmp_path: Path
+):
     from gulp_sdk.api.collab import CollabAPI
 
     api = CollabAPI(dummy_client)
@@ -598,7 +652,9 @@ async def test_collab_optional_params_and_filter_inference(dummy_client, tmp_pat
     assert call.kwargs["json"]["tags"] == ["t"]
 
     dummy_client._request.return_value = {"data": [{"id": "n1"}]}
-    notes = await api.note_list(flt={"operation_ids": ["op-from-filter"]}, req_id="req-note-list")
+    notes = await api.note_list(
+        flt={"operation_ids": ["op-from-filter"]}, req_id="req-note-list"
+    )
     assert isinstance(notes, list)
     call = dummy_client._request.await_args_list[-1]
     assert call.kwargs["params"]["operation_id"] == "op-from-filter"
@@ -636,7 +692,9 @@ async def test_collab_optional_params_and_filter_inference(dummy_client, tmp_pat
     assert call.kwargs["json"]["doc_ids"] == ["doc-c"]
 
     dummy_client._request.return_value = {"data": [{"id": "l1"}]}
-    links = await api.link_list(flt={"operation_ids": ["op-link"]}, req_id="req-link-list")
+    links = await api.link_list(
+        flt={"operation_ids": ["op-link"]}, req_id="req-link-list"
+    )
     assert isinstance(links, list)
     call = dummy_client._request.await_args_list[-1]
     assert call.kwargs["params"]["operation_id"] == "op-link"
@@ -741,7 +799,10 @@ async def test_users_and_groups_optional_params_and_empty_update_body(dummy_clie
     dummy_client._request.return_value = {"data": [{"id": "u2"}]}
     listed = await users.list(req_id="req-user-list")
     assert isinstance(listed, list)
-    assert dummy_client._request.await_args_list[-1].kwargs["params"]["req_id"] == "req-user-list"
+    assert (
+        dummy_client._request.await_args_list[-1].kwargs["params"]["req_id"]
+        == "req-user-list"
+    )
 
     dummy_client._request.return_value = {"data": {"ok": True}}
     await users.set_data("k", {"v": 1}, user_id="u2", req_id="req-set")
@@ -790,22 +851,37 @@ async def test_users_and_groups_optional_params_and_empty_update_body(dummy_clie
     assert call.kwargs["json"]["permission"] == ["read", "edit"]
 
     await groups.delete("g2", req_id="req-group-delete")
-    assert dummy_client._request.await_args_list[-1].kwargs["params"]["req_id"] == "req-group-delete"
+    assert (
+        dummy_client._request.await_args_list[-1].kwargs["params"]["req_id"]
+        == "req-group-delete"
+    )
 
     await groups.get("g2", req_id="req-group-get")
-    assert dummy_client._request.await_args_list[-1].kwargs["params"]["req_id"] == "req-group-get"
+    assert (
+        dummy_client._request.await_args_list[-1].kwargs["params"]["req_id"]
+        == "req-group-get"
+    )
 
     dummy_client._request.return_value = {"data": [{"id": "g2"}]}
     listed_groups = await groups.list(flt={"ids": ["g2"]}, req_id="req-group-list")
     assert isinstance(listed_groups, list)
-    assert dummy_client._request.await_args_list[-1].kwargs["params"]["req_id"] == "req-group-list"
+    assert (
+        dummy_client._request.await_args_list[-1].kwargs["params"]["req_id"]
+        == "req-group-list"
+    )
 
     dummy_client._request.return_value = {"data": {"id": "g2"}}
     await groups.add_user("g2", "u2", req_id="req-group-add")
-    assert dummy_client._request.await_args_list[-1].kwargs["params"]["req_id"] == "req-group-add"
+    assert (
+        dummy_client._request.await_args_list[-1].kwargs["params"]["req_id"]
+        == "req-group-add"
+    )
 
     await groups.remove_user("g2", "u2", req_id="req-group-remove")
-    assert dummy_client._request.await_args_list[-1].kwargs["params"]["req_id"] == "req-group-remove"
+    assert (
+        dummy_client._request.await_args_list[-1].kwargs["params"]["req_id"]
+        == "req-group-remove"
+    )
 
 
 @pytest.mark.unit
@@ -816,7 +892,11 @@ async def test_db_plugins_shim(dummy_client, tmp_path: Path):
     db = DbAPI(dummy_client)
     plugins = PluginsAPI(dummy_client)
 
-    dummy_client._request.return_value = {"status": "pending", "req_id": "r1", "data": {}}
+    dummy_client._request.return_value = {
+        "status": "pending",
+        "req_id": "r1",
+        "data": {},
+    }
     assert isinstance(await db.rebase_by_query("op1", "ws1", 1000, flt={}), dict)
 
     # verify wait path for pending request
@@ -832,8 +912,14 @@ async def test_db_plugins_shim(dummy_client, tmp_path: Path):
             )
         return {"status": "done", "id": "r1"}
 
-    dummy_client.plugins = SimpleNamespace(request_get=AsyncMock(side_effect=_request_get))
-    dummy_client._request.return_value = {"status": "pending", "req_id": "r1", "data": {}}
+    dummy_client.plugins = SimpleNamespace(
+        request_get=AsyncMock(side_effect=_request_get)
+    )
+    dummy_client._request.return_value = {
+        "status": "pending",
+        "req_id": "r1",
+        "data": {},
+    }
     out = await db.rebase_by_query("op1", "ws1", 1000, flt={}, wait=True, timeout=5)
     assert out.get("status") == "done"
     assert calls["n"] >= 2
@@ -900,7 +986,9 @@ async def test_operations_all_methods(dummy_client):
         out.append(item.id)
     assert out == ["op1", "op2"]
 
-    dummy_client._request.return_value = {"data": {"id": "op1", "name": "a", "description": "x"}}
+    dummy_client._request.return_value = {
+        "data": {"id": "op1", "name": "a", "description": "x"}
+    }
     assert (await api.update("op1", description="x")).id == "op1"
     assert await api.delete("op1") is True
 
@@ -940,7 +1028,9 @@ async def test_queries_additional_methods(dummy_client, tmp_path: Path):
     assert isinstance(await api.query_history_get(), list)
 
     dummy_client._request.return_value = {"data": {"buckets": []}}
-    assert isinstance(await api.query_max_min_per_field("op1", group_by="event.code"), dict)
+    assert isinstance(
+        await api.query_max_min_per_field("op1", group_by="event.code"), dict
+    )
 
     dummy_client._request.return_value = {"data": [{"id": "op1"}]}
     assert isinstance(
@@ -981,7 +1071,11 @@ async def test_ingest_preview_and_file_to_source(dummy_client, tmp_path: Path):
     assert call.kwargs["files"][0][0] == "payload"
     assert call.kwargs["files"][1][0] == "f"
 
-    dummy_client._request.return_value = {"status": "pending", "req_id": "r9", "data": {}}
+    dummy_client._request.return_value = {
+        "status": "pending",
+        "req_id": "r9",
+        "data": {},
+    }
     out = await api.file_to_source(
         "src1",
         str(f),
@@ -1002,7 +1096,9 @@ async def test_ingest_preview_and_file_to_source(dummy_client, tmp_path: Path):
 
 
 @pytest.mark.unit
-async def test_ingest_file_to_source_wait_retries_transient_request_stats_notfound(dummy_client, tmp_path: Path):
+async def test_ingest_file_to_source_wait_retries_transient_request_stats_notfound(
+    dummy_client, tmp_path: Path
+):
     from gulp_sdk.api.ingest import IngestAPI
     from gulp_sdk.exceptions import NotFoundError
 
@@ -1010,7 +1106,11 @@ async def test_ingest_file_to_source_wait_retries_transient_request_stats_notfou
     f = tmp_path / "wait.evtx"
     f.write_bytes(b"x")
 
-    dummy_client._request.return_value = {"status": "pending", "req_id": "rwait", "data": {}}
+    dummy_client._request.return_value = {
+        "status": "pending",
+        "req_id": "rwait",
+        "data": {},
+    }
     calls = {"n": 0}
 
     async def _request_get(_req_id: str):
@@ -1034,7 +1134,9 @@ async def test_ingest_file_to_source_wait_retries_transient_request_stats_notfou
 
 
 @pytest.mark.unit
-async def test_ingest_file_to_source_wait_raises_non_transient_notfound(dummy_client, tmp_path: Path):
+async def test_ingest_file_to_source_wait_raises_non_transient_notfound(
+    dummy_client, tmp_path: Path
+):
     from gulp_sdk.api.ingest import IngestAPI
     from gulp_sdk.exceptions import NotFoundError
 
@@ -1042,7 +1144,11 @@ async def test_ingest_file_to_source_wait_raises_non_transient_notfound(dummy_cl
     f = tmp_path / "wait2.evtx"
     f.write_bytes(b"x")
 
-    dummy_client._request.return_value = {"status": "pending", "req_id": "rwait2", "data": {}}
+    dummy_client._request.return_value = {
+        "status": "pending",
+        "req_id": "rwait2",
+        "data": {},
+    }
     dummy_client.plugins = SimpleNamespace(
         request_get=AsyncMock(
             side_effect=NotFoundError(
@@ -1058,7 +1164,9 @@ async def test_ingest_file_to_source_wait_raises_non_transient_notfound(dummy_cl
 
 
 @pytest.mark.unit
-async def test_ingest_file_wait_retries_transient_request_stats_notfound(dummy_client, tmp_path: Path):
+async def test_ingest_file_wait_retries_transient_request_stats_notfound(
+    dummy_client, tmp_path: Path
+):
     from gulp_sdk.api.ingest import IngestAPI
     from gulp_sdk.exceptions import NotFoundError
 
@@ -1066,7 +1174,11 @@ async def test_ingest_file_wait_retries_transient_request_stats_notfound(dummy_c
     f = tmp_path / "wait_file.evtx"
     f.write_bytes(b"x")
 
-    dummy_client._request.return_value = {"status": "pending", "req_id": "rwait_file", "data": {}}
+    dummy_client._request.return_value = {
+        "status": "pending",
+        "req_id": "rwait_file",
+        "data": {},
+    }
     calls = {"n": 0}
 
     async def _request_get(_req_id: str):
@@ -1079,7 +1191,9 @@ async def test_ingest_file_wait_retries_transient_request_stats_notfound(dummy_c
             )
         return {"status": "done", "id": "rwait_file"}
 
-    dummy_client.plugins = SimpleNamespace(request_get=AsyncMock(side_effect=_request_get))
+    dummy_client.plugins = SimpleNamespace(
+        request_get=AsyncMock(side_effect=_request_get)
+    )
 
     out = await api.file("op1", "win_evtx", str(f), wait=True, timeout=5)
     assert out.status == "done"
@@ -1093,7 +1207,11 @@ async def test_ingest_raw_wait_retries_transient_request_stats_notfound(dummy_cl
 
     api = IngestAPI(dummy_client)
 
-    dummy_client._request.return_value = {"status": "pending", "req_id": "rwait_raw", "data": {}}
+    dummy_client._request.return_value = {
+        "status": "pending",
+        "req_id": "rwait_raw",
+        "data": {},
+    }
     calls = {"n": 0}
 
     async def _request_get(_req_id: str):
@@ -1106,7 +1224,9 @@ async def test_ingest_raw_wait_retries_transient_request_stats_notfound(dummy_cl
             )
         return {"status": "done", "id": "rwait_raw"}
 
-    dummy_client.plugins = SimpleNamespace(request_get=AsyncMock(side_effect=_request_get))
+    dummy_client.plugins = SimpleNamespace(
+        request_get=AsyncMock(side_effect=_request_get)
+    )
 
     out = await api.raw("op1", "raw", [{"a": 1}], wait=True, timeout=5)
     assert out.status == "done"
@@ -1114,7 +1234,9 @@ async def test_ingest_raw_wait_retries_transient_request_stats_notfound(dummy_cl
 
 
 @pytest.mark.unit
-async def test_plugins_optional_params_and_download_error_paths(dummy_client, tmp_path: Path):
+async def test_plugins_optional_params_and_download_error_paths(
+    dummy_client, tmp_path: Path
+):
     from gulp_sdk.api.plugins import PluginsAPI
 
     class _Resp:
@@ -1146,7 +1268,31 @@ async def test_plugins_optional_params_and_download_error_paths(dummy_client, tm
     await api.enhance_map_delete("e1", req_id="r-emd")
     await api.enhance_map_get("e1", req_id="r-emg")
     await api.enhance_map_list(flt={"plugin": "p"}, req_id="r-eml")
-    await api.object_delete_bulk("op1", "note", {"ids": ["n1"]}, req_id="r-odb")
+    await api.object_delete_bulk(
+        "op1",
+        "note",
+        {"ids": ["n-default"]},
+        req_id="r-odb-default",
+    )
+    call = dummy_client._request.await_args_list[-1]
+    assert call.kwargs["params"]["ws_id"] == "ws-test"
+
+    await api.object_delete_bulk(
+        "op1",
+        "note",
+        {"ids": ["n1"]},
+        ws_id="ws-bulk",
+        req_id="r-odb",
+    )
+    call = dummy_client._request.await_args_list[-1]
+    assert call.args[:2] == ("DELETE", "/object_delete_bulk")
+    assert call.kwargs["params"] == {
+        "operation_id": "op1",
+        "obj_type": "note",
+        "ws_id": "ws-bulk",
+        "req_id": "r-odb",
+    }
+    assert call.kwargs["json"] == {"ids": ["n1"]}
     await api.object_count("note", {"ids": ["n1"]}, operation_id="op1", req_id="r-oc")
     call = dummy_client._request.await_args_list[-1]
     assert call.args[:2] == ("POST", "/object_count")
@@ -1174,7 +1320,9 @@ async def test_operations_optional_params_and_error_paths(dummy_client):
 
     dummy_client._request.return_value = {"data": {"id": "x"}}
     await api.context_create("op1", "ctx", color="#fff", glyph_id="g1", req_id="r1")
-    await api.source_create("op1", "ctx1", "src", color="#000", glyph_id="g2", req_id="r2")
+    await api.source_create(
+        "op1", "ctx1", "src", color="#000", glyph_id="g2", req_id="r2"
+    )
     await api.operation_cleanup("op1", additional_tables=["note"], req_id="r3")
     await api.context_list("op1", req_id="r4")
     await api.context_get("ctx1", req_id="r5")
@@ -1218,13 +1366,19 @@ async def test_queries_optional_and_error_branches(dummy_client, tmp_path: Path)
 
     api = QueriesAPI(dummy_client)
 
-    dummy_client._request.return_value = {"status": "pending", "req_id": "r", "data": {}}
+    dummy_client._request.return_value = {
+        "status": "pending",
+        "req_id": "r",
+        "data": {},
+    }
     await api.query_raw("op1", {"query": {"match_all": {}}}, req_id="r-raw")
     await api.query_gulp("op1", flt={"operation_ids": ["op1"]}, req_id="r-gulp")
     await api.query_single_id("op1", "d1", req_id="r-single")
     await api.query_aggregation("op1", {"size": 0}, req_id="r-agg")
     await api.query_history_get(req_id="r-hist")
-    await api.query_max_min_per_field("op1", flt={"operation_ids": ["op1"]}, group_by="event.code", req_id="r-mm")
+    await api.query_max_min_per_field(
+        "op1", flt={"operation_ids": ["op1"]}, group_by="event.code", req_id="r-mm"
+    )
     await api.query_operations(req_id="r-ops")
     await api.query_fields_by_source("op1", "ctx1", "src1", req_id="r-fields")
     await api.query_mapping_by_source("op1", "ctx1", "src1", req_id="r-mapping")
@@ -1245,5 +1399,7 @@ async def test_queries_optional_and_error_branches(dummy_client, tmp_path: Path)
 
     # Export-json error path triggers _raise_for_status call.
     dummy_client._client.post = AsyncMock(return_value=_Resp(500, b"err"))
-    await api.query_gulp_export_json("op1", str(tmp_path / "out.json"), req_id="r-export")
+    await api.query_gulp_export_json(
+        "op1", str(tmp_path / "out.json"), req_id="r-export"
+    )
     assert dummy_client._raise_for_status.call_count >= 1

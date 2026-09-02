@@ -55,7 +55,9 @@ class PluginsAPI:
         params: dict[str, Any] = {}
         if req_id is not None:
             params["req_id"] = req_id
-        response = await self.client._request("GET", "/plugin_list", params=params or None)
+        response = await self.client._request(
+            "GET", "/plugin_list", params=params or None
+        )
         return response.get("data", [])
 
     async def list_ui(self, *, req_id: str | None = None) -> list[dict[str, Any]]:
@@ -193,7 +195,9 @@ class PluginsAPI:
             Version string, e.g. ``"gulp v0.0.9 (muty v0.2)"``.
         """
         if not self.client.token:
-            raise AuthenticationError("Gulp server version requires an authentication token")
+            raise AuthenticationError(
+                "Gulp server version requires an authentication token"
+            )
         params: dict[str, Any] = {}
         if req_id is not None:
             params["req_id"] = req_id
@@ -285,9 +289,9 @@ class PluginsAPI:
         }
         if req_id is not None:
             params["req_id"] = req_id
-        return (
-            await self.client._request("GET", "/request_list", params=params)
-        ).get("data", [])
+        return (await self.client._request("GET", "/request_list", params=params)).get(
+            "data", []
+        )
 
     async def request_delete(
         self,
@@ -376,7 +380,10 @@ class PluginsAPI:
             params["req_id"] = req_id
         return (
             await self.client._request(
-                "POST", "/enhance_document_map_create", params=params, json=match_criteria
+                "POST",
+                "/enhance_document_map_create",
+                params=params,
+                json=match_criteria,
             )
         ).get("data", {})
 
@@ -502,6 +509,7 @@ class PluginsAPI:
         obj_type: str,
         flt: dict[str, Any],
         *,
+        ws_id: str | None = None,
         req_id: str | None = None,
     ) -> dict[str, Any]:
         """
@@ -511,6 +519,7 @@ class PluginsAPI:
             operation_id: Operation to scope the delete.
             obj_type: Collab object type string (e.g. ``"note"``).
             flt: ``GulpCollabFilter``-compatible dict to restrict deletion.
+            ws_id: Websocket ID receiving the bulk delete notification.
             req_id: Optional request ID.
 
         Returns:
@@ -519,6 +528,7 @@ class PluginsAPI:
         params: dict[str, Any] = {
             "operation_id": operation_id,
             "obj_type": obj_type,
+            "ws_id": ws_id or self.client.ws_id,
         }
         if req_id is not None:
             params["req_id"] = req_id

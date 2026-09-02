@@ -78,7 +78,10 @@ class QueriesAPI:
             ws_id: WebSocket ID (defaults to client ws_id).
             q_options: ``GulpQueryParameters`` dict — supports pagination,
                 field filtering, sorting, ``preview_mode``, ``name``,
-                ``create_notes``, etc.
+                ``create_notes``, etc. Set ``ws_ack_window`` to a positive
+                value to opt in to bounded ``docs_chunk`` delivery, then call
+                ``GulpWebSocket.acknowledge_documents_chunk`` after processing
+                every chunk.
             req_id: Optional request ID.
 
         Returns:
@@ -488,10 +491,10 @@ class QueriesAPI:
         req_id: str | None = None,
     ) -> list[dict[str, Any]]:
         """
-        Get the query history for the currently authenticated user.
+        Get query history for the currently authenticated user.
 
         Returns:
-            List of ``GulpUserDataQueryHistoryEntry`` dicts.
+            ``GulpUserDataQueryHistoryEntry`` dicts ordered newest first.
         """
         params: dict[str, Any] = {}
         if req_id is not None:

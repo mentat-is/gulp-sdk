@@ -10,6 +10,10 @@ This page maps the main `gulp-sdk` API groups to the corresponding methods. All 
 - WebSocket:
   - `async with client.websocket() as ws:`
   - `await client.ensure_websocket()`
+  - `await ws.acknowledge_documents_chunk(req_id, chunk_number)` after
+    durably processing an `ack_required` chunk from a query using
+    `q_options={"ws_ack_window": ...}`
+  - `ws.server_capabilities` includes `docs_chunk_ack_v1` when supported
 - SDK build version:
   - `client.sdk_version()`
 - Server version API:
@@ -51,7 +55,7 @@ This page maps the main `gulp-sdk` API groups to the corresponding methods. All 
 - `query_gulp(operation_id, ws_id, flt, q_options, req_id)`
 - `query_external(operation_id, q, plugin, plugin_params, ws_id, q_options, req_id)`
 - `query_sigma(...)`
-- `query_history_get`, `query_operations`, etc.
+- `query_history_get` (returns entries newest first), `query_operations`, etc.
 
 ## Collaboration (`client.collab`)
 

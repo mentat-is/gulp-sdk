@@ -22,6 +22,8 @@ from gulp_sdk.exceptions import NetworkError, AuthenticationError
 
 logger = logging.getLogger(__name__)
 
+WS_CAPABILITY_DOCUMENTS_CHUNK_ACK = "docs_chunk_ack_v1"
+
 
 def _build_invalid_status_errors() -> tuple[type[BaseException], ...]:
     """Return websocket invalid-status exception classes available in this version."""
@@ -44,6 +46,7 @@ class WSMessageType(str, Enum):
 
     # Document/ingestion updates
     DOCUMENTS_CHUNK = "docs_chunk"
+    DOCUMENTS_CHUNK_ACK = "docs_chunk_ack"
     INGEST_SOURCE_DONE = "ingest_source_done"
     INGEST_RAW_PROGRESS = "ingest_raw_progress"
     REBASE_DONE = "rebase_done"
@@ -110,6 +113,29 @@ class WSAuthPacket:
         return packet
 
 
+@dataclass(frozen=True)
+class WSDocumentsChunkAckPacket:
+    """Acknowledgment for a persisted/processed documents chunk."""
+
+    req_id: str
+    chunk_number: int
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to the authenticated client-message envelope."""
+        if not self.req_id:
+            raise ValueError("req_id must not be empty")
+        if self.chunk_number < 1:
+            raise ValueError("chunk_number must be greater than zero")
+        return {
+            "type": WSMessageType.DOCUMENTS_CHUNK_ACK.value,
+            "req_id": self.req_id,
+            "payload": {
+                "req_id": self.req_id,
+                "chunk_number": self.chunk_number,
+            },
+        }
+
+
 class GulpWebSocket:
     """
     WebSocket client for Gulp real-time updates.
@@ -154,6 +180,7 @@ class GulpWebSocket:
         self._receive_task: asyncio.Task[None] | None = None
         self._connect_lock = asyncio.Lock()
         self._disconnect_requested = False
+        self.server_capabilities: frozenset[str] = frozenset()
 
         # Message subscriptions
         self._subscriptions: dict[str, list[Callable[[WSMessage], Any]]] = {}
@@ -251,6 +278,27 @@ class GulpWebSocket:
         await self._ws.send(json.dumps(unsub_data))
         self._logger.debug(f"Unsubscribed: req_id={req_id}")
         self._forget_server_subscription(req_id)
+
+    async def acknowledge_documents_chunk(
+        self,
+        req_id: str,
+        chunk_number: int,
+    ) -> None:
+        """Release one server-side ``docs_chunk`` flow-control slot.
+
+        Call this only after the chunk has been durably processed. The query
+        must opt in with ``q_options["ws_ack_window"] > 0``.
+        """
+        if not self._connected or self._ws is None:
+            raise NetworkError("WebSocket is not connected")
+        if (
+            WS_CAPABILITY_DOCUMENTS_CHUNK_ACK not in self.server_capabilities
+        ):
+            raise NetworkError(
+                "Server does not advertise docs_chunk_ack_v1 support"
+            )
+        packet = WSDocumentsChunkAckPacket(req_id, chunk_number)
+        await self._ws.send(json.dumps(packet.to_dict()))
 
     def on_message(self, message_type: WSMessageType, callback: Callable[[WSMessage], Any]) -> None:
         """
@@ -374,6 +422,12 @@ class GulpWebSocket:
                 raise AuthenticationError(
                     f"Unexpected WebSocket handshake message: {ack_message.type}"
                 )
+            capabilities = ack_message.data.get("capabilities", [])
+            self.server_capabilities = frozenset(
+                str(capability)
+                for capability in capabilities
+                if isinstance(capability, str)
+            )
 
             await self._replay_server_subscriptions()
 
