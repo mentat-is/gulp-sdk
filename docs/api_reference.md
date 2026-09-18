@@ -50,12 +50,55 @@ This page maps the main `gulp-sdk` API groups to the corresponding methods. All 
 ## Queries (`client.queries`)
 
 - `query_raw(operation_id, q, ws_id, q_options, req_id)`
-- `query_raw_paginate(operation_id, q, limit, offset, q_options, req_id)`
+- `query_raw_paginate(operation_id, q, q_options, pagination_mode=None, pit_id=None, search_after=None, req_id=None)`
+- `query_raw_paginate_close(operation_id, pit_id, req_id=None)`
 - `query_single_id(operation_id, doc_id, req_id)`
 - `query_gulp(operation_id, ws_id, flt, q_options, req_id)`
 - `query_external(operation_id, q, plugin, plugin_params, ws_id, q_options, req_id)`
 - `query_sigma(...)`
 - `query_history_get` (returns entries newest first), `query_operations`, etc.
+
+### Raw pagination
+
+Offset pagination remains the default and existing calls continue to work:
+
+```python
+page = await client.queries.query_raw_paginate(
+    "my-operation",
+    {"query": {"match_all": {}}},
+    {"limit": 50, "offset": 100},
+)
+```
+
+Use PIT mode when results must remain stable across deep or direct page jumps.
+The first request omits `pit_id`; subsequent requests reuse the returned
+`pit_id` and may pass the returned `search_after` cursor. Cursor elements are
+OpenSearch sort values and may be strings, numbers, booleans, or null values.
+
+```python
+page = await client.queries.query_raw_paginate(
+    "my-operation",
+    {"query": {"match_all": {}}},
+    {"limit": 50, "offset": 0, "sort": {"@timestamp": "asc"}},
+    pagination_mode="pit",
+)
+
+next_page = await client.queries.query_raw_paginate(
+    "my-operation",
+    {"query": {"match_all": {}}},
+    {"limit": 50, "offset": 50, "sort": {"@timestamp": "asc"}},
+    pagination_mode="pit",
+    pit_id=page["pit_id"],
+    search_after=page.get("search_after"),
+)
+
+await client.queries.query_raw_paginate_close(
+    "my-operation", next_page["pit_id"]
+)
+```
+
+Always close a PIT when pagination finishes. If a PIT expires, start again
+without `pit_id` to open a new snapshot.
 
 ## Collaboration (`client.collab`)
 

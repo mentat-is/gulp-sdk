@@ -32,9 +32,14 @@ Quick example::
 """
 
 import inspect
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, cast
 
 from gulp_sdk.api.request_utils import wait_for_request_stats
+from gulp_sdk.models import (
+    PaginationMode,
+    QueryRawPaginateCloseResponse,
+    QueryRawPaginateResponse,
+)
 
 if TYPE_CHECKING:
     from gulp_sdk.client import GulpClient
@@ -116,39 +121,79 @@ class QueriesAPI:
     async def query_raw_paginate(
         self,
         operation_id: str,
-        q: dict,
+        q: dict[str, Any],
         q_options: dict[str, Any],
         *,
+        pagination_mode: PaginationMode | None = None,
+        pit_id: str | None = None,
+        search_after: list[Any] | None = None,
         req_id: str | None = None,
-    ) -> dict[str, Any]:
+    ) -> QueryRawPaginateResponse:
         """
-        Query Gulp using raw OpenSearch DSL with simple pagination support.
+        Query Gulp using raw OpenSearch DSL with offset or PIT pagination.
 
-        Runs a single query and returns paginated results directly.
+        Offset mode is the backwards-compatible default.  PIT mode creates a
+        stable snapshot when ``pit_id`` is omitted and returns its ID plus the
+        ``search_after`` cursor for the next page.  Pass those values to later
+        calls to continue the same snapshot, and close it with
+        :meth:`query_raw_paginate_close` when finished.
 
         Args:
             operation_id: Target operation.
             q: OpenSearch DSL query dict.
-            q_options: ``GulpQueryParameters`` dict — must include `limit` and `offset`.
+            q_options: ``GulpQueryParameters`` dict. It must include ``limit``
+                and ``offset``; it may also contain ``pagination_mode``,
+                ``pit_id`` and ``search_after``.
+            pagination_mode: Optional typed override for ``q_options``;
+                ``"offset"`` preserves legacy behavior and ``"pit"`` uses a
+                stable point-in-time snapshot.
+            pit_id: Existing PIT to reuse. Omit it on the first PIT request.
+            search_after: Sort values returned by the previous PIT response.
+                This typed override accepts scalar sort values, not only dicts.
             req_id: Optional request ID.
 
         Returns:
-            ``{"total_hits": n, "docs": [...]}``.
+            Offset mode returns ``total_hits`` and ``docs``. PIT mode also
+            returns ``pit_id`` and ``search_after``.
         """
         params: dict[str, Any] = {"operation_id": operation_id}
         if req_id is not None:
             params["req_id"] = req_id
 
-        params: dict[str, Any] = {
-            "operation_id": operation_id,
-        }
-        if req_id is not None:
-            params["req_id"] = req_id
-        body: dict[str, Any] = {"q": q, "q_options": q_options}
+        options = dict(q_options)
+        if pagination_mode is not None:
+            options["pagination_mode"] = pagination_mode
+        if pit_id is not None:
+            options["pit_id"] = pit_id
+        if search_after is not None:
+            options["search_after"] = search_after
+
+        body: dict[str, Any] = {"q": q, "q_options": options}
         response_data = await self.client._request(
             "POST", "/query_raw_paginate", json=body, params=params
         )
-        return response_data.get("data", {})
+        return cast(QueryRawPaginateResponse, response_data.get("data", {}))
+
+    async def query_raw_paginate_close(
+        self,
+        operation_id: str,
+        pit_id: str,
+        *,
+        req_id: str | None = None,
+    ) -> QueryRawPaginateCloseResponse:
+        """Close a point-in-time snapshot created for raw pagination."""
+
+        params: dict[str, Any] = {"operation_id": operation_id}
+        if req_id is not None:
+            params["req_id"] = req_id
+
+        response_data = await self.client._request(
+            "DELETE",
+            "/query_raw_paginate",
+            json={"pit_id": pit_id},
+            params=params,
+        )
+        return cast(QueryRawPaginateCloseResponse, response_data.get("data", {}))
 
     async def query_gulp(
         self,

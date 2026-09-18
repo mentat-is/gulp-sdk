@@ -64,6 +64,9 @@ from gulp_sdk.models import (
     PluginEntry,
     MappingFile,
     EnhanceDocumentMap,
+    PaginationMode,
+    QueryRawPaginateCloseResponse,
+    QueryRawPaginateResponse,
 )
 from gulp_sdk.websocket import (
     GulpWebSocket,
@@ -115,6 +118,9 @@ __all__ = [
     "PluginEntry",
     "MappingFile",
     "EnhanceDocumentMap",
+    "PaginationMode",
+    "QueryRawPaginateCloseResponse",
+    "QueryRawPaginateResponse",
     # WebSocket
     "GulpWebSocket",
     "WS_CAPABILITY_DOCUMENTS_CHUNK_ACK",

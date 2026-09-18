@@ -10,7 +10,7 @@ All Gulp API responses follow the JSend standard:
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, Literal, NotRequired, TypeAlias, TypedDict, TypeVar
 from datetime import datetime
 
 import pydantic
@@ -26,6 +26,23 @@ class JSendStatus(str, Enum):
 
 
 T = TypeVar("T")
+
+PaginationMode: TypeAlias = Literal["offset", "pit"]
+
+
+class QueryRawPaginateResponse(TypedDict):
+    """Payload returned by ``query_raw_paginate``."""
+
+    total_hits: int
+    docs: list[dict[str, Any]]
+    pit_id: NotRequired[str]
+    search_after: NotRequired[list[Any] | None]
+
+
+class QueryRawPaginateCloseResponse(TypedDict):
+    """Payload returned when a pagination PIT is closed."""
+
+    closed: bool
 
 
 @dataclass(frozen=True)
