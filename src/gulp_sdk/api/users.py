@@ -108,10 +108,7 @@ class UsersAPI:
         Returns:
             Created user dict.
         """
-        params: dict[str, Any] = {
-            "user_id": user_id,
-            "password": password,
-        }
+        params: dict[str, Any] = {"user_id": user_id}
         if email is not None:
             params["email"] = email
         if glyph_id is not None:
@@ -119,7 +116,8 @@ class UsersAPI:
         if req_id is not None:
             params["req_id"] = req_id
 
-        body: dict[str, Any] = {"permission": permission}
+        # the password goes in the body: a query string ends up in access logs
+        body: dict[str, Any] = {"permission": permission, "password": password}
         if user_data is not None:
             body["user_data"] = user_data
 
@@ -185,8 +183,6 @@ class UsersAPI:
         params: dict[str, Any] = {"merge_user_data": merge_user_data}
         if user_id is not None:
             params["user_id"] = user_id
-        if password is not None:
-            params["password"] = password
         if email is not None:
             params["email"] = email
         if glyph_id is not None:
@@ -195,6 +191,9 @@ class UsersAPI:
             params["req_id"] = req_id
 
         body: dict[str, Any] = {}
+        if password is not None:
+            # in the body: a query string ends up in access logs
+            body["password"] = password
         if permission is not None:
             body["permission"] = permission
         if user_data is not None:

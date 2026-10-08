@@ -722,6 +722,8 @@ async def test_users_and_groups_optional_params_and_empty_update_body(dummy_clie
     assert call.kwargs["params"]["email"] == "u2@example.com"
     assert call.kwargs["params"]["glyph_id"] == "gu2"
     assert call.kwargs["json"]["user_data"] == {"team": "blue"}
+    assert "password" not in call.kwargs["params"]
+    assert call.kwargs["json"]["password"]
 
     await users.update(
         user_id="u2",
@@ -735,7 +737,9 @@ async def test_users_and_groups_optional_params_and_empty_update_body(dummy_clie
     )
     call = dummy_client._request.await_args_list[-1]
     assert call.kwargs["params"]["merge_user_data"] is False
-    assert call.kwargs["params"]["password"] == "NewPassw0rd!"
+    # the password travels in the body, never in the query string
+    assert "password" not in call.kwargs["params"]
+    assert call.kwargs["json"]["password"] == "NewPassw0rd!"
     assert call.kwargs["json"]["permission"] == ["read", "edit"]
 
     dummy_client._request.return_value = {"data": [{"id": "u2"}]}
