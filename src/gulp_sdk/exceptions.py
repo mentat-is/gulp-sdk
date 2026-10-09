@@ -51,6 +51,17 @@ class PermissionError(GulpSDKError):
     pass
 
 
+class PasswordChangeRequiredError(PermissionError):
+    """
+    Raised by login when the user must choose a new password first: the password
+    was generated at installation or set by an administrator.
+
+    Log in again passing ``new_password``.
+    """
+
+    pass
+
+
 class NotFoundError(GulpSDKError):
     """
     Raised when a requested resource does not exist.

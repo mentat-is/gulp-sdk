@@ -40,6 +40,7 @@ from gulp_sdk.client import GulpClient
 from gulp_sdk.exceptions import (
     GulpSDKError,
     AuthenticationError,
+    PasswordChangeRequiredError,
     PermissionError,
     NotFoundError,
     AlreadyExistsError,
@@ -86,6 +87,7 @@ __all__ = [
     # Exceptions
     "GulpSDKError",
     "AuthenticationError",
+    "PasswordChangeRequiredError",
     "PermissionError",
     "NotFoundError",
     "AlreadyExistsError",

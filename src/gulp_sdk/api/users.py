@@ -89,6 +89,7 @@ class UsersAPI:
         email: str | None = None,
         user_data: dict[str, Any] | None = None,
         glyph_id: str | None = None,
+        must_change_password: bool = True,
         req_id: str | None = None,
     ) -> dict[str, Any]:
         """
@@ -103,12 +104,18 @@ class UsersAPI:
             email: Optional email address.
             user_data: Optional arbitrary user data dict.
             glyph_id: Optional glyph ID for user avatar.
+            must_change_password: If True (default) the user must choose a new
+                password at the first login, so that who creates the user does
+                not know it. Pass False for a service account.
             req_id: Optional request ID.
 
         Returns:
             Created user dict.
         """
-        params: dict[str, Any] = {"user_id": user_id}
+        params: dict[str, Any] = {
+            "user_id": user_id,
+            "must_change_password": must_change_password,
+        }
         if email is not None:
             params["email"] = email
         if glyph_id is not None:
@@ -133,7 +140,7 @@ class UsersAPI:
         req_id: str | None = None,
     ) -> dict[str, Any]:
         """
-        Delete a user (admin required). ``admin`` and ``guest`` cannot be deleted.
+        Delete a user (admin required). ``admin`` cannot be deleted.
 
         Args:
             user_id: User ID to delete.
@@ -158,6 +165,7 @@ class UsersAPI:
         user_data: dict[str, Any] | None = None,
         merge_user_data: bool = True,
         glyph_id: str | None = None,
+        must_change_password: bool | None = None,
         req_id: str | None = None,
     ) -> dict[str, Any]:
         """
@@ -175,12 +183,17 @@ class UsersAPI:
             user_data: User data to set/merge.
             merge_user_data: If True (default) merge with existing user data.
             glyph_id: New glyph ID.
+            must_change_password: With ``password``: whether the user must choose
+                a new one at the next login. Default: True when an admin sets the
+                password of another user, False when a user changes its own.
             req_id: Optional request ID.
 
         Returns:
             Updated user dict.
         """
         params: dict[str, Any] = {"merge_user_data": merge_user_data}
+        if must_change_password is not None:
+            params["must_change_password"] = must_change_password
         if user_id is not None:
             params["user_id"] = user_id
         if email is not None:

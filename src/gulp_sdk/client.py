@@ -335,6 +335,7 @@ class GulpClient:
             AuthenticationError, PermissionError, NotFoundError, etc.
         """
         from gulp_sdk.exceptions import (
+            PasswordChangeRequiredError,
             PermissionError as GulpPermissionError,
             NotFoundError as GulpNotFoundError,
             AlreadyExistsError,
@@ -352,6 +353,9 @@ class GulpClient:
         if status_code == 401:
             raise AuthenticationError(error_msg, status_code, response_data)
         elif status_code == 403:
+            error = data_val.get("__error") if isinstance(data_val, dict) else None
+            if isinstance(error, dict) and error.get("name") == "PasswordChangeRequired":
+                raise PasswordChangeRequiredError(error_msg, status_code, response_data)
             raise GulpPermissionError(error_msg, status_code, response_data)
         elif status_code == 404:
             raise GulpNotFoundError(error_msg, status_code, response_data)

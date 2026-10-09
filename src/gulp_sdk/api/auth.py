@@ -24,7 +24,13 @@ class AuthAPI:
         self.client = client
         self._last_user_id: str | None = None
 
-    async def login(self, user_id: str, password: str, force: bool = True) -> TokenSession:
+    async def login(
+        self,
+        user_id: str,
+        password: str,
+        force: bool = True,
+        new_password: str | None = None,
+    ) -> TokenSession:
         """
         Authenticate with username/password, get session token.
 
@@ -32,17 +38,26 @@ class AuthAPI:
             user_id: Login user id
             password: Login password
             force: If True, forces login even if already logged in (invalidates existing session token).
+            new_password: Password to replace the current one with, in the same
+                request. Required when the user must change password (see
+                ``PasswordChangeRequiredError``), accepted from any user.
 
         Returns:
             TokenSession with authentication token
 
         Raises:
-            AuthenticationError: If credentials invalid
+            AuthenticationError: If credentials invalid (the server does not say
+                whether the user exists)
+            PasswordChangeRequiredError: If the user must choose a new password
+                first: call again with ``new_password``
         """
+        body = {"user_id": user_id, "password": password}
+        if new_password is not None:
+            body["new_password"] = new_password
         response_data = await self.client._request(
             "POST",
             "/login",
-            json={"user_id": user_id, "password": password},
+            json=body,
             params={"force": force},
         )
         token_data = response_data.get("data", {})
