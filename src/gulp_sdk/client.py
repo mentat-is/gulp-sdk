@@ -336,6 +336,7 @@ class GulpClient:
         """
         from gulp_sdk.exceptions import (
             PasswordChangeRequiredError,
+            UserSuspendedError,
             PermissionError as GulpPermissionError,
             NotFoundError as GulpNotFoundError,
             AlreadyExistsError,
@@ -356,6 +357,8 @@ class GulpClient:
             error = data_val.get("__error") if isinstance(data_val, dict) else None
             if isinstance(error, dict) and error.get("name") == "PasswordChangeRequired":
                 raise PasswordChangeRequiredError(error_msg, status_code, response_data)
+            if isinstance(error, dict) and error.get("name") == "UserSuspended":
+                raise UserSuspendedError(error_msg, status_code, response_data)
             raise GulpPermissionError(error_msg, status_code, response_data)
         elif status_code == 404:
             raise GulpNotFoundError(error_msg, status_code, response_data)

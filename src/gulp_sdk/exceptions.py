@@ -62,6 +62,15 @@ class PasswordChangeRequiredError(PermissionError):
     pass
 
 
+class UserSuspendedError(PermissionError):
+    """
+    Raised by login when the password is right but an administrator suspended
+    the account: nothing the user can do but ask an administrator.
+    """
+
+    pass
+
+
 class NotFoundError(GulpSDKError):
     """
     Raised when a requested resource does not exist.

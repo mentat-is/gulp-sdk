@@ -89,11 +89,14 @@ class UsersAPI:
         email: str | None = None,
         user_data: dict[str, Any] | None = None,
         glyph_id: str | None = None,
-        must_change_password: bool = True,
         req_id: str | None = None,
     ) -> dict[str, Any]:
         """
         Create a new user (admin required).
+
+        The password is temporary: the user must choose a new one at the first
+        login (``auth.login(user_id, password, new_password=...)``), so that who
+        creates the user does not know the final one.
 
         Args:
             user_id: New user's login ID.
@@ -104,18 +107,12 @@ class UsersAPI:
             email: Optional email address.
             user_data: Optional arbitrary user data dict.
             glyph_id: Optional glyph ID for user avatar.
-            must_change_password: If True (default) the user must choose a new
-                password at the first login, so that who creates the user does
-                not know it. Pass False for a service account.
             req_id: Optional request ID.
 
         Returns:
             Created user dict.
         """
-        params: dict[str, Any] = {
-            "user_id": user_id,
-            "must_change_password": must_change_password,
-        }
+        params: dict[str, Any] = {"user_id": user_id}
         if email is not None:
             params["email"] = email
         if glyph_id is not None:
@@ -165,7 +162,8 @@ class UsersAPI:
         user_data: dict[str, Any] | None = None,
         merge_user_data: bool = True,
         glyph_id: str | None = None,
-        must_change_password: bool | None = None,
+        force_password_change: bool = False,
+        suspended: bool | None = None,
         req_id: str | None = None,
     ) -> dict[str, Any]:
         """
@@ -173,7 +171,10 @@ class UsersAPI:
 
         Admin required when changing another user's attributes or permission.
         At least one of ``password``, ``permission``, ``email``, ``user_data``,
-        or ``glyph_id`` must be provided.
+        ``glyph_id``, ``force_password_change`` or ``suspended`` must be provided.
+
+        A password set for another user is temporary: that user must choose a
+        new one at the next login. A user changing its own is not asked again.
 
         Args:
             user_id: User to update (omit to update self).
@@ -183,17 +184,20 @@ class UsersAPI:
             user_data: User data to set/merge.
             merge_user_data: If True (default) merge with existing user data.
             glyph_id: New glyph ID.
-            must_change_password: With ``password``: whether the user must choose
-                a new one at the next login. Default: True when an admin sets the
-                password of another user, False when a user changes its own.
+            force_password_change: If True the user must choose a new password
+                at the next login, the current one is not touched (admin required).
+            suspended: True suspends the user, who cannot log in (``UserSuspendedError``)
+                until reactivated with False (admin required).
             req_id: Optional request ID.
 
         Returns:
             Updated user dict.
         """
         params: dict[str, Any] = {"merge_user_data": merge_user_data}
-        if must_change_password is not None:
-            params["must_change_password"] = must_change_password
+        if force_password_change:
+            params["force_password_change"] = True
+        if suspended is not None:
+            params["suspended"] = suspended
         if user_id is not None:
             params["user_id"] = user_id
         if email is not None:
