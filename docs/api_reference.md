@@ -43,9 +43,14 @@ This page maps the main `gulp-sdk` API groups to the corresponding methods. All 
 
 - `file(operation_id, plugin_name, file_path, context_name, ws_id, params)`
 - `file_to_source(source_id, file_path, plugin, plugin_params, flt, ws_id, req_id)` (`plugin_params` is required when overriding `plugin`; `{}` is allowed)
-- `raw(operation_id, plugin_name, data, params)`
+- `raw(operation_id, plugin_name, data, params, wait=False, timeout=120, ws_callback=None, wait_for_worker=False)`
 - `status(operation_id, req_id)`
 - `preview(operation_id, plugin_name, file_path, params)`
+
+For raw ingestion, `wait=True` waits for terminal request statistics. Raw
+progress packets, including a final packet with `last=True`, are forwarded to
+`ws_callback` but do not complete the wait. `wait_for_worker=True` is separate:
+it keeps the HTTP call open only until the submitted chunk has been processed.
 
 ## Queries (`client.queries`)
 

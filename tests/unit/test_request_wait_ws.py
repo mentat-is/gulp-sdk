@@ -155,6 +155,50 @@ async def test_query_done_does_not_resolve_future():
 
 
 @pytest.mark.unit
+async def test_ingest_raw_progress_does_not_resolve_future():
+    """Raw progress is not terminal even when its payload status is done."""
+    ws = _FakeWS()
+    plugins = SimpleNamespace(request_get=AsyncMock(return_value={"status": "ongoing"}))
+
+    async def _ensure_websocket():
+        return ws
+
+    client = SimpleNamespace(plugins=plugins, ensure_websocket=_ensure_websocket)
+    received: list[WSMessage] = []
+
+    wait_task = asyncio.create_task(
+        wait_for_request_stats(
+            client,
+            "req-raw-progress",
+            timeout=5,
+            ws_callback=received.append,
+        )
+    )
+    await asyncio.sleep(0.05)
+    await ws.emit(
+        WSMessageType.INGEST_RAW_PROGRESS,
+        req_id="req-raw-progress",
+        data={"status": "done", "last": True},
+    )
+    await asyncio.sleep(0.05)
+
+    assert not wait_task.done()
+    assert [message.type for message in received] == [
+        WSMessageType.INGEST_RAW_PROGRESS.value
+    ]
+
+    await ws.emit(
+        WSMessageType.STATS_UPDATE,
+        req_id="req-raw-progress",
+        data={"obj": {"status": "done", "records_ingested": 10_025}},
+    )
+    out = await wait_task
+
+    assert out["status"] == "done"
+    assert out["records_ingested"] == 10_025
+
+
+@pytest.mark.unit
 async def test_ws_callback_receives_progress_and_terminal_events():
     """ws_callback should be called for both progress and terminal WS messages."""
     ws = _FakeWS()

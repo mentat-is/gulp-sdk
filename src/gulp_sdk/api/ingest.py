@@ -188,6 +188,7 @@ class IngestAPI:
             wait_for_worker: Wait until this chunk finishes processing
             wait: Wait until the overall request reaches a terminal status
             timeout: Timeout in seconds for either wait
+            ws_callback: Optional callback for matching WebSocket progress events
 
         Returns:
             IngestResult with req_id for status tracking
