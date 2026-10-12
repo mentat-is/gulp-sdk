@@ -486,6 +486,13 @@ async def test_users_and_user_groups_all_methods(dummy_client):
     dummy_client._request.return_value = {"data": 123}
     assert await users.session_keepalive() == 123
 
+    # a session is identified by its user, never by its token
+    dummy_client._request.return_value = {"data": {"user_id": "u1"}}
+    assert (await users.session_delete("u1"))["user_id"] == "u1"
+    dummy_client._request.assert_called_with(
+        "DELETE", "/user_session_delete", params={"user_id": "u1"}
+    )
+
     dummy_client._request.return_value = {"data": {"k": "v"}}
     assert (await users.set_data("k", "v"))["k"] == "v"
 

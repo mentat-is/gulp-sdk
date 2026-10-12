@@ -271,6 +271,9 @@ class UsersAPI:
         """
         List user sessions.
 
+        A session is listed without its id, which is the session token: it is
+        identified by its user (``session_user_id``).
+
         Args:
             user_id: Optional user filter. Non-admin users can only query themselves.
             req_id: Optional request ID.
@@ -290,21 +293,22 @@ class UsersAPI:
 
     async def session_delete(
         self,
-        session_id: str,
+        user_id: str,
         *,
         req_id: str | None = None,
     ) -> dict[str, Any]:
         """
-        Delete one user session.
+        Delete the session of a user (a user has at most one), logging it out.
 
         Args:
-            session_id: Session ID / token ID to delete.
+            user_id: The user whose session is deleted; admin required for
+                other users.
             req_id: Optional request ID.
 
         Returns:
-            ``{"id": session_id}`` on success.
+            ``{"user_id": user_id}`` on success.
         """
-        params: dict[str, Any] = {"obj_id": session_id}
+        params: dict[str, Any] = {"user_id": user_id}
         if req_id is not None:
             params["req_id"] = req_id
         response_data = await self.client._request(
