@@ -153,7 +153,14 @@ async def test_client_ensure_websocket_requires_token():
 
 @pytest.mark.unit
 async def test_websocket_connect_subscribe_callbacks(monkeypatch):
-    connected = json.dumps({"type": "ws_connected", "req_id": "a", "timestamp_msec": 1, "payload": {}})
+    connected = json.dumps(
+        {
+            "type": "ws_connected",
+            "req_id": "a",
+            "timestamp_msec": 1,
+            "payload": {"capabilities": ["docs_chunk_ack_v1"]},
+        }
+    )
     docs = json.dumps({"type": "docs_chunk", "req_id": "r1", "timestamp_msec": 2, "payload": {"docs": []}})
     bad = "not-json"
     fake_ws = _FakeWS([connected, docs, bad])
@@ -180,6 +187,37 @@ async def test_websocket_connect_subscribe_callbacks(monkeypatch):
     assert "docs_chunk" in got
     assert any("subscribe" in s for s in fake_ws.sent)
     assert any("unsubscribe" in s for s in fake_ws.sent)
+    assert "docs_chunk_ack_v1" in ws.server_capabilities
+
+
+@pytest.mark.unit
+async def test_websocket_sends_documents_chunk_ack_after_handshake(monkeypatch):
+    connected = json.dumps(
+        {
+            "type": "ws_connected",
+            "req_id": "a",
+            "timestamp_msec": 1,
+            "payload": {"capabilities": ["docs_chunk_ack_v1"]},
+        }
+    )
+    fake_ws = _FakeWS([connected])
+
+    async def _fake_connect(uri):
+        return fake_ws
+
+    monkeypatch.setattr("gulp_sdk.websocket.websockets.connect", _fake_connect)
+
+    ws = GulpWebSocket("ws://localhost:8080/ws", "tok", "ws1")
+    await ws.connect()
+    await ws.acknowledge_documents_chunk("query-1", 3)
+    await ws.disconnect()
+
+    packets = [json.loads(raw) for raw in fake_ws.sent]
+    assert {
+        "type": "docs_chunk_ack",
+        "req_id": "query-1",
+        "payload": {"req_id": "query-1", "chunk_number": 3},
+    } in packets
 
 
 @pytest.mark.unit

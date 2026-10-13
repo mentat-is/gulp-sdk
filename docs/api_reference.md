@@ -10,6 +10,10 @@ This page maps the main `gulp-sdk` API groups to the corresponding methods. All 
 - WebSocket:
   - `async with client.websocket() as ws:`
   - `await client.ensure_websocket()`
+  - `await ws.acknowledge_documents_chunk(req_id, chunk_number)` after
+    durably processing an `ack_required` chunk from a query using
+    `q_options={"ws_ack_window": ...}`
+  - `ws.server_capabilities` includes `docs_chunk_ack_v1` when supported
 - SDK build version:
   - `client.sdk_version()`
 - Server version API:
@@ -39,19 +43,67 @@ This page maps the main `gulp-sdk` API groups to the corresponding methods. All 
 
 - `file(operation_id, plugin_name, file_path, context_name, ws_id, params)`
 - `file_to_source(source_id, file_path, plugin, plugin_params, flt, ws_id, req_id)` (`plugin_params` is required when overriding `plugin`; `{}` is allowed)
-- `raw(operation_id, plugin_name, data, params)`
+- `raw(operation_id, plugin_name, data, params, wait=False, timeout=120, ws_callback=None, wait_for_worker=False)`
 - `status(operation_id, req_id)`
 - `preview(operation_id, plugin_name, file_path, params)`
+
+For raw ingestion, `wait=True` waits for terminal request statistics. Raw
+progress packets, including a final packet with `last=True`, are forwarded to
+`ws_callback` but do not complete the wait. `wait_for_worker=True` is separate:
+it keeps the HTTP call open only until the submitted chunk has been processed.
 
 ## Queries (`client.queries`)
 
 - `query_raw(operation_id, q, ws_id, q_options, req_id)`
-- `query_raw_paginate(operation_id, q, limit, offset, q_options, req_id)`
+- `query_raw_paginate(operation_id, q, q_options, pagination_mode=None, pit_id=None, search_after=None, req_id=None)`
+- `query_raw_paginate_close(operation_id, pit_id, req_id=None)`
 - `query_single_id(operation_id, doc_id, req_id)`
 - `query_gulp(operation_id, ws_id, flt, q_options, req_id)`
 - `query_external(operation_id, q, plugin, plugin_params, ws_id, q_options, req_id)`
 - `query_sigma(...)`
-- `query_history_get`, `query_operations`, etc.
+- `query_history_get` (returns entries newest first), `query_operations`, etc.
+
+### Raw pagination
+
+Offset pagination remains the default and existing calls continue to work:
+
+```python
+page = await client.queries.query_raw_paginate(
+    "my-operation",
+    {"query": {"match_all": {}}},
+    {"limit": 50, "offset": 100},
+)
+```
+
+Use PIT mode when results must remain stable across deep or direct page jumps.
+The first request omits `pit_id`; subsequent requests reuse the returned
+`pit_id` and may pass the returned `search_after` cursor. Cursor elements are
+OpenSearch sort values and may be strings, numbers, booleans, or null values.
+
+```python
+page = await client.queries.query_raw_paginate(
+    "my-operation",
+    {"query": {"match_all": {}}},
+    {"limit": 50, "offset": 0, "sort": {"@timestamp": "asc"}},
+    pagination_mode="pit",
+)
+
+next_page = await client.queries.query_raw_paginate(
+    "my-operation",
+    {"query": {"match_all": {}}},
+    {"limit": 50, "offset": 50, "sort": {"@timestamp": "asc"}},
+    pagination_mode="pit",
+    pit_id=page["pit_id"],
+    search_after=page.get("search_after"),
+)
+
+await client.queries.query_raw_paginate_close(
+    "my-operation", next_page["pit_id"]
+)
+```
+
+Always close a PIT when pagination finishes. If a PIT expires, start again
+without `pit_id` to open a new snapshot.
 
 ## Collaboration (`client.collab`)
 

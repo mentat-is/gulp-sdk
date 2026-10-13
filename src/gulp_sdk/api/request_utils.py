@@ -15,7 +15,6 @@ _TERMINAL_STATUSES: frozenset[str] = frozenset({"done", "failed", "canceled"})
 _WS_TERMINAL_TYPES: tuple[WSMessageType, ...] = (
     WSMessageType.STATS_CREATE,
     WSMessageType.STATS_UPDATE,
-    WSMessageType.INGEST_RAW_PROGRESS,
     WSMessageType.REBASE_DONE,
     WSMessageType.ERROR,
 )
@@ -28,6 +27,7 @@ _TERMINAL_TYPE_VALUES: frozenset[str] = frozenset(t.value for t in _WS_TERMINAL_
 _WS_PROGRESS_TYPES: tuple[WSMessageType, ...] = (
     WSMessageType.QUERY_DONE,
     WSMessageType.INGEST_SOURCE_DONE,
+    WSMessageType.INGEST_RAW_PROGRESS,
     WSMessageType.DOCUMENTS_CHUNK,
 )
 
