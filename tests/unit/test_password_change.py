@@ -57,6 +57,15 @@ async def test_user_passwords_travel_in_the_body(client):
     assert call.kwargs["json"] == {"password": "Second-Passw0rd!"}
     assert call.kwargs["params"] == {"merge_user_data": True, "user_id": "bob"}
 
+    # its own password: the current one goes with it, in the body too
+    await users.update(password="Third-Passw0rd!", current_password="Second-Passw0rd!")
+    call = client._request.await_args
+    assert call.kwargs["json"] == {
+        "password": "Third-Passw0rd!",
+        "current_password": "Second-Passw0rd!",
+    }
+    assert call.kwargs["params"] == {"merge_user_data": True}
+
 
 @pytest.mark.unit
 async def test_password_change_and_suspension_are_asked_only_when_given(client):

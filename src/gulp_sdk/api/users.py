@@ -157,6 +157,7 @@ class UsersAPI:
         *,
         user_id: str | None = None,
         password: str | None = None,
+        current_password: str | None = None,
         permission: list[str] | None = None,
         email: str | None = None,
         user_data: dict[str, Any] | None = None,
@@ -173,12 +174,15 @@ class UsersAPI:
         At least one of ``password``, ``permission``, ``email``, ``user_data``,
         ``glyph_id``, ``force_password_change`` or ``suspended`` must be provided.
 
-        A password set for another user is temporary: that user must choose a
-        new one at the next login. A user changing its own is not asked again.
+        A user changing its own password must also give ``current_password``
+        (``PermissionError`` if wrong). A password set for another user (admin
+        only) is temporary: that user must choose a new one at the next login.
 
         Args:
             user_id: User to update (omit to update self).
             password: New password.
+            current_password: The password the user has now, required to change
+                its own password.
             permission: New permission list.
             email: New email.
             user_data: User data to set/merge.
@@ -211,6 +215,8 @@ class UsersAPI:
         if password is not None:
             # in the body: a query string ends up in access logs
             body["password"] = password
+        if current_password is not None:
+            body["current_password"] = current_password
         if permission is not None:
             body["permission"] = permission
         if user_data is not None:
